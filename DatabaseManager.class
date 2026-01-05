@@ -1,0 +1,655 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+
+public class DatabaseManager {
+   private static DatabaseManager instance;
+   private Connection connection;
+   private static final String DB_URL = "jdbc:h2:./job_listing;AUTO_SERVER=TRUE";
+   private static final String DB_USER = "sa";
+   private static final String DB_PASSWORD = "";
+
+   private DatabaseManager() {
+      this.connect();
+      this.createTables();
+   }
+
+   public static synchronized DatabaseManager getInstance() {
+      if (instance == null) {
+         instance = new DatabaseManager();
+      }
+
+      return instance;
+   }
+
+   private void connect() {
+      try {
+         Class.forName("org.h2.Driver");
+         this.connection = DriverManager.getConnection("jdbc:h2:./job_listing;AUTO_SERVER=TRUE", "sa", "");
+         System.out.println("✓ Connected to H2 database");
+      } catch (ClassNotFoundException var2) {
+         System.err.println("H2 JDBC driver not found: " + var2.getMessage());
+      } catch (SQLException var3) {
+         System.err.println("Database connection error: " + var3.getMessage());
+      }
+
+   }
+
+   public boolean isConnected() {
+      try {
+         return this.connection != null && !this.connection.isClosed();
+      } catch (SQLException var2) {
+         return false;
+      }
+   }
+
+   private void createTables() {
+      if (this.isConnected()) {
+         try {
+            Statement var1 = this.connection.createStatement();
+
+            try {
+               var1.execute("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, email VARCHAR(255), role VARCHAR(50) NOT NULL DEFAULT 'Customer')");
+
+               try {
+                  ResultSet var2 = var1.executeQuery("SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'USERS' AND COLUMN_NAME = 'EMAIL'");
+                  if (!var2.next()) {
+                     var1.execute("ALTER TABLE users ADD COLUMN email VARCHAR(255)");
+                  }
+
+                  var2.close();
+               } catch (SQLException var5) {
+               }
+
+               var1.execute("CREATE TABLE IF NOT EXISTS jobs (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, company VARCHAR(255), location VARCHAR(255), salary VARCHAR(100), description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+               var1.execute("CREATE TABLE IF NOT EXISTS applications (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) NOT NULL, job_title VARCHAR(255) NOT NULL, company VARCHAR(255), applicant_name VARCHAR(255), email VARCHAR(255), phone VARCHAR(50), cover_letter TEXT, status VARCHAR(50) DEFAULT 'Pending', applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+               var1.execute("CREATE TABLE IF NOT EXISTS notifications (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) NOT NULL, job_title VARCHAR(255) NOT NULL, message TEXT, status VARCHAR(50), is_read INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+               var1.execute("CREATE TABLE IF NOT EXISTS resumes (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, full_name VARCHAR(255), email VARCHAR(255), phone VARCHAR(50), address TEXT, education TEXT, experience TEXT, skills TEXT, summary TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+               var1.execute("CREATE TABLE IF NOT EXISTS contact_messages (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) NOT NULL, subject VARCHAR(255) NOT NULL, message TEXT NOT NULL, email VARCHAR(255), phone VARCHAR(50), status VARCHAR(50) DEFAULT 'New', is_read INT DEFAULT 0, admin_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+               var1.execute("CREATE TABLE IF NOT EXISTS user_sessions (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) NOT NULL, login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, logout_time TIMESTAMP, is_active INT DEFAULT 1)");
+               PreparedStatement var8 = this.connection.prepareStatement("MERGE INTO users (username, password, role) KEY(username) VALUES (?, ?, ?)");
+               var8.setString(1, "admin");
+               var8.setString(2, "admin123");
+               var8.setString(3, "Admin");
+               var8.executeUpdate();
+               var8.close();
+               System.out.println("✓ Database tables created/verified");
+            } catch (Throwable var6) {
+               if (var1 != null) {
+                  try {
+                     var1.close();
+                  } catch (Throwable var4) {
+                     var6.addSuppressed(var4);
+                  }
+               }
+
+               throw var6;
+            }
+
+            if (var1 != null) {
+               var1.close();
+            }
+         } catch (SQLException var7) {
+            System.err.println("Error creating tables: " + var7.getMessage());
+         }
+
+      }
+   }
+
+   public void addSampleJobs() {
+      if (this.isConnected()) {
+         try {
+            Statement var1 = this.connection.createStatement();
+            ResultSet var2 = var1.executeQuery("SELECT COUNT(*) FROM jobs");
+            if (var2.next() && var2.getInt(1) == 0) {
+               String[] var3 = new String[]{"INSERT INTO jobs (title, company, location, salary, description) VALUES ('Software Engineer', 'Tech Corp', 'Manila', '80,000 PHP', 'Develop and maintain software applications')", "INSERT INTO jobs (title, company, location, salary, description) VALUES ('Data Analyst', 'Data Inc', 'Makati', '60,000 PHP', 'Analyze business data and create reports')", "INSERT INTO jobs (title, company, location, salary, description) VALUES ('Project Manager', 'Global Solutions', 'BGC', '100,000 PHP', 'Lead and manage project teams')", "INSERT INTO jobs (title, company, location, salary, description) VALUES ('UI/UX Designer', 'Creative Agency', 'Cebu', '55,000 PHP', 'Design user interfaces and experiences')", "INSERT INTO jobs (title, company, location, salary, description) VALUES ('Network Administrator', 'IT Services', 'Quezon City', '50,000 PHP', 'Manage and maintain network infrastructure')"};
+               String[] var4 = var3;
+               int var5 = var3.length;
+
+               for(int var6 = 0; var6 < var5; ++var6) {
+                  String var7 = var4[var6];
+                  var1.executeUpdate(var7);
+               }
+
+               System.out.println("✓ Sample jobs added");
+            }
+
+            var2.close();
+            var1.close();
+         } catch (SQLException var8) {
+            System.err.println("Error adding sample jobs: " + var8.getMessage());
+         }
+
+      }
+   }
+
+   public boolean userExists(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("SELECT COUNT(*) FROM users WHERE username = ?");
+      var2.setString(1, var1);
+      ResultSet var3 = var2.executeQuery();
+      boolean var4 = var3.next() && var3.getInt(1) > 0;
+      var3.close();
+      var2.close();
+      return var4;
+   }
+
+   public boolean addUser(String var1, String var2, String var3, String var4) throws SQLException {
+      PreparedStatement var5 = this.connection.prepareStatement("INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)");
+      var5.setString(1, var1);
+      var5.setString(2, var2);
+      var5.setString(3, var3);
+      var5.setString(4, var4);
+      int var6 = var5.executeUpdate();
+      var5.close();
+      return var6 > 0;
+   }
+
+   public boolean deleteUser(int var1, String var2) throws SQLException {
+      if ("admin".equalsIgnoreCase(var2)) {
+         throw new SQLException("Cannot delete the admin user.");
+      } else {
+         PreparedStatement var3 = this.connection.prepareStatement("DELETE FROM user_sessions WHERE username = ?");
+         var3.setString(1, var2);
+         var3.executeUpdate();
+         var3.close();
+         PreparedStatement var4 = this.connection.prepareStatement("DELETE FROM applications WHERE username = ?");
+         var4.setString(1, var2);
+         var4.executeUpdate();
+         var4.close();
+         PreparedStatement var5 = this.connection.prepareStatement("DELETE FROM notifications WHERE username = ?");
+         var5.setString(1, var2);
+         var5.executeUpdate();
+         var5.close();
+         PreparedStatement var6 = this.connection.prepareStatement("DELETE FROM resumes WHERE username = ?");
+         var6.setString(1, var2);
+         var6.executeUpdate();
+         var6.close();
+         PreparedStatement var7 = this.connection.prepareStatement("DELETE FROM contact_messages WHERE username = ?");
+         var7.setString(1, var2);
+         var7.executeUpdate();
+         var7.close();
+         PreparedStatement var8 = this.connection.prepareStatement("DELETE FROM users WHERE id = ?");
+         var8.setInt(1, var1);
+         int var9 = var8.executeUpdate();
+         var8.close();
+         return var9 > 0;
+      }
+   }
+
+   public int deleteAllUsersExceptAdmin() throws SQLException {
+      Statement var1 = this.connection.createStatement();
+      ResultSet var2 = var1.executeQuery("SELECT username FROM users WHERE LOWER(username) != 'admin'");
+      int var3 = 0;
+
+      while(var2.next()) {
+         String var4 = var2.getString("username");
+
+         try {
+            PreparedStatement var5 = this.connection.prepareStatement("DELETE FROM user_sessions WHERE username = ?");
+            var5.setString(1, var4);
+            var5.executeUpdate();
+            var5.close();
+            PreparedStatement var6 = this.connection.prepareStatement("DELETE FROM applications WHERE username = ?");
+            var6.setString(1, var4);
+            var6.executeUpdate();
+            var6.close();
+            PreparedStatement var7 = this.connection.prepareStatement("DELETE FROM notifications WHERE username = ?");
+            var7.setString(1, var4);
+            var7.executeUpdate();
+            var7.close();
+            PreparedStatement var8 = this.connection.prepareStatement("DELETE FROM resumes WHERE username = ?");
+            var8.setString(1, var4);
+            var8.executeUpdate();
+            var8.close();
+            PreparedStatement var9 = this.connection.prepareStatement("DELETE FROM contact_messages WHERE username = ?");
+            var9.setString(1, var4);
+            var9.executeUpdate();
+            var9.close();
+            PreparedStatement var10 = this.connection.prepareStatement("DELETE FROM users WHERE username = ?");
+            var10.setString(1, var4);
+            var10.executeUpdate();
+            var10.close();
+            ++var3;
+         } catch (SQLException var11) {
+            System.err.println("Error deleting user " + var4 + ": " + var11.getMessage());
+         }
+      }
+
+      var2.close();
+      var1.close();
+      return var3;
+   }
+
+   public String validateLogin(String var1, String var2) throws SQLException {
+      PreparedStatement var3 = this.connection.prepareStatement("SELECT role FROM users WHERE username = ? AND password = ?");
+      var3.setString(1, var1);
+      var3.setString(2, var2);
+      ResultSet var4 = var3.executeQuery();
+      String var5 = null;
+      if (var4.next()) {
+         var5 = var4.getString("role");
+         this.recordLogin(var1);
+      }
+
+      var4.close();
+      var3.close();
+      return var5;
+   }
+
+   public void recordLogin(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("UPDATE user_sessions SET is_active = 0 WHERE username = ? AND is_active = 1");
+      var2.setString(1, var1);
+      var2.executeUpdate();
+      var2.close();
+      PreparedStatement var3 = this.connection.prepareStatement("INSERT INTO user_sessions (username, is_active) VALUES (?, 1)");
+      var3.setString(1, var1);
+      var3.executeUpdate();
+      var3.close();
+   }
+
+   public void recordLogout(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("UPDATE user_sessions SET logout_time = CURRENT_TIMESTAMP, is_active = 0 WHERE username = ? AND is_active = 1");
+      var2.setString(1, var1);
+      var2.executeUpdate();
+      var2.close();
+   }
+
+   public List<String[]> getAllJobs() throws SQLException {
+      ArrayList var1 = new ArrayList();
+      Statement var2 = this.connection.createStatement();
+      ResultSet var3 = var2.executeQuery("SELECT id, title, company, location, salary, description FROM jobs ORDER BY id DESC");
+
+      while(var3.next()) {
+         var1.add(new String[]{String.valueOf(var3.getInt("id")), var3.getString("title"), var3.getString("company"), var3.getString("location"), var3.getString("salary"), var3.getString("description")});
+      }
+
+      var3.close();
+      var2.close();
+      return var1;
+   }
+
+   public int addJob(String var1, String var2, String var3, String var4, String var5) throws SQLException {
+      PreparedStatement var6 = this.connection.prepareStatement("INSERT INTO jobs (title, company, location, salary, description) VALUES (?, ?, ?, ?, ?)", 1);
+      var6.setString(1, var1);
+      var6.setString(2, var2);
+      var6.setString(3, var3);
+      var6.setString(4, var4);
+      var6.setString(5, var5);
+      var6.executeUpdate();
+      ResultSet var7 = var6.getGeneratedKeys();
+      int var8 = var7.next() ? var7.getInt(1) : -1;
+      var7.close();
+      var6.close();
+      return var8;
+   }
+
+   public boolean updateJob(int var1, String var2, String var3, String var4, String var5, String var6) throws SQLException {
+      PreparedStatement var7 = this.connection.prepareStatement("UPDATE jobs SET title = ?, company = ?, location = ?, salary = ?, description = ? WHERE id = ?");
+      var7.setString(1, var2);
+      var7.setString(2, var3);
+      var7.setString(3, var4);
+      var7.setString(4, var5);
+      var7.setString(5, var6);
+      var7.setInt(6, var1);
+      int var8 = var7.executeUpdate();
+      var7.close();
+      return var8 > 0;
+   }
+
+   public boolean deleteJob(int var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("DELETE FROM jobs WHERE id = ?");
+      var2.setInt(1, var1);
+      int var3 = var2.executeUpdate();
+      var2.close();
+      return var3 > 0;
+   }
+
+   public int getPendingApplicationCount() throws SQLException {
+      Statement var1 = this.connection.createStatement();
+      ResultSet var2 = var1.executeQuery("SELECT COUNT(*) FROM applications WHERE status = 'Pending'");
+      int var3 = var2.next() ? var2.getInt(1) : 0;
+      var2.close();
+      var1.close();
+      return var3;
+   }
+
+   public List<Object[]> getAllApplications() throws SQLException {
+      ArrayList var1 = new ArrayList();
+      Statement var2 = this.connection.createStatement();
+      ResultSet var3 = var2.executeQuery("SELECT id, username, job_title, company, applicant_name, email, phone, cover_letter, status, applied_at FROM applications ORDER BY applied_at DESC");
+
+      while(var3.next()) {
+         var1.add(new Object[]{var3.getInt("id"), var3.getString("username"), var3.getString("job_title"), var3.getString("company"), var3.getString("applicant_name"), var3.getString("email"), var3.getString("phone"), var3.getString("cover_letter"), var3.getString("status"), var3.getString("applied_at")});
+      }
+
+      var3.close();
+      var2.close();
+      return var1;
+   }
+
+   public List<Object[]> getUserApplications(String var1) throws SQLException {
+      ArrayList var2 = new ArrayList();
+      PreparedStatement var3 = this.connection.prepareStatement("SELECT id, job_title, company, applicant_name, email, status, applied_at FROM applications WHERE username = ? ORDER BY applied_at DESC");
+      var3.setString(1, var1);
+      ResultSet var4 = var3.executeQuery();
+
+      while(var4.next()) {
+         var2.add(new Object[]{var4.getInt("id"), var4.getString("job_title"), var4.getString("company"), var4.getString("applicant_name"), var4.getString("email"), var4.getString("status"), var4.getString("applied_at")});
+      }
+
+      var4.close();
+      var3.close();
+      return var2;
+   }
+
+   public boolean addApplication(String var1, String var2, String var3, String var4, String var5, String var6, String var7) throws SQLException {
+      PreparedStatement var8 = this.connection.prepareStatement("INSERT INTO applications (username, job_title, company, applicant_name, email, phone, cover_letter) VALUES (?, ?, ?, ?, ?, ?, ?)");
+      var8.setString(1, var1);
+      var8.setString(2, var2);
+      var8.setString(3, var3);
+      var8.setString(4, var4);
+      var8.setString(5, var5);
+      var8.setString(6, var6);
+      var8.setString(7, var7);
+      int var9 = var8.executeUpdate();
+      var8.close();
+      if (var9 > 0) {
+         String var10 = "New application from " + var4 + " (" + var1 + ") for job: " + var2;
+         this.addNotification("admin", var2, var10, "Pending");
+      }
+
+      return var9 > 0;
+   }
+
+   public boolean updateApplicationStatus(int var1, String var2) throws SQLException {
+      PreparedStatement var3 = this.connection.prepareStatement("UPDATE applications SET status = ? WHERE id = ?");
+      var3.setString(1, var2);
+      var3.setInt(2, var1);
+      int var4 = var3.executeUpdate();
+      var3.close();
+      return var4 > 0;
+   }
+
+   public int getUnreadNotificationCount(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("SELECT COUNT(*) FROM notifications WHERE username = ? AND is_read = 0");
+      var2.setString(1, var1);
+      ResultSet var3 = var2.executeQuery();
+      int var4 = var3.next() ? var3.getInt(1) : 0;
+      var3.close();
+      var2.close();
+      return var4;
+   }
+
+   public List<Object[]> getUnreadNotifications(String var1) throws SQLException {
+      ArrayList var2 = new ArrayList();
+      PreparedStatement var3 = this.connection.prepareStatement("SELECT id, job_title, message, status, created_at FROM notifications WHERE username = ? AND is_read = 0 ORDER BY created_at DESC");
+      var3.setString(1, var1);
+      ResultSet var4 = var3.executeQuery();
+
+      while(var4.next()) {
+         var2.add(new Object[]{var4.getInt("id"), var4.getString("job_title"), var4.getString("message"), var4.getString("status"), var4.getString("created_at")});
+      }
+
+      var4.close();
+      var3.close();
+      return var2;
+   }
+
+   public List<Object[]> getAllNotifications(String var1) throws SQLException {
+      ArrayList var2 = new ArrayList();
+      PreparedStatement var3 = this.connection.prepareStatement("SELECT id, job_title, message, status, is_read, created_at FROM notifications WHERE username = ? ORDER BY created_at DESC");
+      var3.setString(1, var1);
+      ResultSet var4 = var3.executeQuery();
+
+      while(var4.next()) {
+         var2.add(new Object[]{var4.getInt("id"), var4.getString("job_title"), var4.getString("message"), var4.getString("status"), var4.getInt("is_read"), var4.getString("created_at")});
+      }
+
+      var4.close();
+      var3.close();
+      return var2;
+   }
+
+   public boolean addNotification(String var1, String var2, String var3, String var4) throws SQLException {
+      PreparedStatement var5 = this.connection.prepareStatement("INSERT INTO notifications (username, job_title, message, status) VALUES (?, ?, ?, ?)");
+      var5.setString(1, var1);
+      var5.setString(2, var2);
+      var5.setString(3, var3);
+      var5.setString(4, var4);
+      int var6 = var5.executeUpdate();
+      var5.close();
+      return var6 > 0;
+   }
+
+   public boolean markNotificationAsRead(int var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("UPDATE notifications SET is_read = 1 WHERE id = ?");
+      var2.setInt(1, var1);
+      int var3 = var2.executeUpdate();
+      var2.close();
+      return var3 > 0;
+   }
+
+   public boolean markAllNotificationsAsRead(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("UPDATE notifications SET is_read = 1 WHERE username = ?");
+      var2.setString(1, var1);
+      int var3 = var2.executeUpdate();
+      var2.close();
+      return var3 > 0;
+   }
+
+   public boolean saveOrUpdateResume(String var1, String var2, String var3, String var4, String var5, String var6, String var7, String var8, String var9) throws SQLException {
+      PreparedStatement var10 = this.connection.prepareStatement("SELECT COUNT(*) FROM resumes WHERE username = ?");
+      var10.setString(1, var1);
+      ResultSet var11 = var10.executeQuery();
+      boolean var12 = var11.next() && var11.getInt(1) > 0;
+      var11.close();
+      var10.close();
+      PreparedStatement var13;
+      int var14;
+      if (var12) {
+         var13 = this.connection.prepareStatement("UPDATE resumes SET full_name = ?, email = ?, phone = ?, address = ?, education = ?, experience = ?, skills = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?");
+         var13.setString(1, var2);
+         var13.setString(2, var3);
+         var13.setString(3, var4);
+         var13.setString(4, var5);
+         var13.setString(5, var6);
+         var13.setString(6, var7);
+         var13.setString(7, var8);
+         var13.setString(8, var9);
+         var13.setString(9, var1);
+         var14 = var13.executeUpdate();
+         var13.close();
+         return var14 > 0;
+      } else {
+         var13 = this.connection.prepareStatement("INSERT INTO resumes (username, full_name, email, phone, address, education, experience, skills, summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+         var13.setString(1, var1);
+         var13.setString(2, var2);
+         var13.setString(3, var3);
+         var13.setString(4, var4);
+         var13.setString(5, var5);
+         var13.setString(6, var6);
+         var13.setString(7, var7);
+         var13.setString(8, var8);
+         var13.setString(9, var9);
+         var14 = var13.executeUpdate();
+         var13.close();
+         return var14 > 0;
+      }
+   }
+
+   public Object[] getResume(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("SELECT full_name, email, phone, address, education, experience, skills, summary FROM resumes WHERE username = ?");
+      var2.setString(1, var1);
+      ResultSet var3 = var2.executeQuery();
+      Object[] var4 = null;
+      if (var3.next()) {
+         var4 = new Object[]{var3.getString("full_name"), var3.getString("email"), var3.getString("phone"), var3.getString("address"), var3.getString("education"), var3.getString("experience"), var3.getString("skills"), var3.getString("summary")};
+      }
+
+      var3.close();
+      var2.close();
+      return var4;
+   }
+
+   public boolean resumeExists(String var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("SELECT COUNT(*) FROM resumes WHERE username = ?");
+      var2.setString(1, var1);
+      ResultSet var3 = var2.executeQuery();
+      boolean var4 = var3.next() && var3.getInt(1) > 0;
+      var3.close();
+      var2.close();
+      return var4;
+   }
+
+   public boolean addContactMessage(String var1, String var2, String var3, String var4, String var5) throws SQLException {
+      PreparedStatement var6 = this.connection.prepareStatement("INSERT INTO contact_messages (username, subject, message, email, phone) VALUES (?, ?, ?, ?, ?)");
+      var6.setString(1, var1);
+      var6.setString(2, var2);
+      var6.setString(3, var3);
+      var6.setString(4, var4);
+      var6.setString(5, var5);
+      int var7 = var6.executeUpdate();
+      var6.close();
+      if (var7 > 0) {
+         String var8 = "New contact message from " + var1 + ": " + var2;
+         this.addNotification("admin", "Contact Us", var8, "New");
+      }
+
+      return var7 > 0;
+   }
+
+   public List<Object[]> getAllContactMessages() throws SQLException {
+      ArrayList var1 = new ArrayList();
+      Statement var2 = this.connection.createStatement();
+      ResultSet var3 = var2.executeQuery("SELECT id, username, subject, message, email, phone, status, is_read, admin_response, created_at FROM contact_messages ORDER BY created_at DESC");
+
+      while(var3.next()) {
+         var1.add(new Object[]{var3.getInt("id"), var3.getString("username"), var3.getString("subject"), var3.getString("message"), var3.getString("email"), var3.getString("phone"), var3.getString("status"), var3.getInt("is_read"), var3.getString("admin_response"), var3.getString("created_at")});
+      }
+
+      var3.close();
+      var2.close();
+      return var1;
+   }
+
+   public List<Object[]> getUserContactMessages(String var1) throws SQLException {
+      ArrayList var2 = new ArrayList();
+      PreparedStatement var3 = this.connection.prepareStatement("SELECT id, subject, message, status, admin_response, created_at FROM contact_messages WHERE username = ? ORDER BY created_at DESC");
+      var3.setString(1, var1);
+      ResultSet var4 = var3.executeQuery();
+
+      while(var4.next()) {
+         var2.add(new Object[]{var4.getInt("id"), var4.getString("subject"), var4.getString("message"), var4.getString("status"), var4.getString("admin_response"), var4.getString("created_at")});
+      }
+
+      var4.close();
+      var3.close();
+      return var2;
+   }
+
+   public int getUnreadContactMessageCount() throws SQLException {
+      Statement var1 = this.connection.createStatement();
+      ResultSet var2 = var1.executeQuery("SELECT COUNT(*) FROM contact_messages WHERE is_read = 0");
+      int var3 = var2.next() ? var2.getInt(1) : 0;
+      var2.close();
+      var1.close();
+      return var3;
+   }
+
+   public boolean markContactMessageAsRead(int var1) throws SQLException {
+      PreparedStatement var2 = this.connection.prepareStatement("UPDATE contact_messages SET is_read = 1 WHERE id = ?");
+      var2.setInt(1, var1);
+      int var3 = var2.executeUpdate();
+      var2.close();
+      return var3 > 0;
+   }
+
+   public boolean updateContactMessageStatus(int var1, String var2, String var3) throws SQLException {
+      PreparedStatement var4 = this.connection.prepareStatement("UPDATE contact_messages SET status = ?, admin_response = ?, is_read = 1 WHERE id = ?");
+      var4.setString(1, var2);
+      var4.setString(2, var3);
+      var4.setInt(3, var1);
+      int var5 = var4.executeUpdate();
+      var4.close();
+      if (var5 > 0 && var3 != null && !var3.trim().isEmpty()) {
+         PreparedStatement var6 = this.connection.prepareStatement("SELECT username, subject FROM contact_messages WHERE id = ?");
+         var6.setInt(1, var1);
+         ResultSet var7 = var6.executeQuery();
+         if (var7.next()) {
+            String var8 = var7.getString("username");
+            String var9 = var7.getString("subject");
+            String var10 = "Admin responded to your contact message: " + var9;
+            this.addNotification(var8, "Contact Us", var10, var2);
+         }
+
+         var7.close();
+         var6.close();
+      }
+
+      return var5 > 0;
+   }
+
+   public List<Object[]> getAllUsersWithSessions() throws SQLException {
+      ArrayList var1 = new ArrayList();
+      SimpleDateFormat var2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+      Statement var3 = this.connection.createStatement();
+
+      ResultSet var4;
+      String var5;
+      String var6;
+      String var8;
+      for(var4 = var3.executeQuery("SELECT u.id, u.username, u.password, u.role, COALESCE(MAX(CASE WHEN s.is_active = 1 THEN 'Online' END), 'Offline') as status, MAX(s.login_time) as last_login, MAX(s.logout_time) as last_logout FROM users u LEFT JOIN user_sessions s ON u.username = s.username GROUP BY u.id, u.username, u.password, u.role ORDER BY u.username"); var4.next(); var1.add(new Object[]{var4.getInt("id"), var4.getString("username"), var4.getString("password"), var4.getString("role"), var5, var6, var8})) {
+         var5 = var4.getString("status");
+         if (var5 == null) {
+            var5 = "Offline";
+         }
+
+         var6 = "Never";
+         Timestamp var7 = var4.getTimestamp("last_login");
+         if (var7 != null) {
+            var6 = var2.format(var7);
+         }
+
+         var8 = "N/A";
+         Timestamp var9 = var4.getTimestamp("last_logout");
+         if (var9 != null) {
+            var8 = var2.format(var9);
+         }
+      }
+
+      var4.close();
+      var3.close();
+      return var1;
+   }
+
+   public List<Object[]> getActiveUsers() throws SQLException {
+      ArrayList var1 = new ArrayList();
+      PreparedStatement var2 = this.connection.prepareStatement("SELECT DISTINCT s.username, u.role, s.login_time FROM user_sessions s JOIN users u ON s.username = u.username WHERE s.is_active = 1 ORDER BY s.login_time DESC");
+      ResultSet var3 = var2.executeQuery();
+
+      while(var3.next()) {
+         var1.add(new Object[]{var3.getString("username"), var3.getString("role"), var3.getString("login_time")});
+      }
+
+      var3.close();
+      var2.close();
+      return var1;
+   }
+
+   public int getActiveUserCount() throws SQLException {
+      Statement var1 = this.connection.createStatement();
+      ResultSet var2 = var1.executeQuery("SELECT COUNT(DISTINCT username) FROM user_sessions WHERE is_active = 1");
+      int var3 = var2.next() ? var2.getInt(1) : 0;
+      var2.close();
+      var1.close();
+      return var3;
+   }
+}
