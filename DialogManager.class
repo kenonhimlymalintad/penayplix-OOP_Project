@@ -1,0 +1,1195 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+
+public class DialogManager {
+   private JFrame parent;
+   private DatabaseManager dbManager;
+   private String currentUser;
+   private Runnable refreshCallback;
+   private JobListingApp mainApp;
+
+   public DialogManager(JFrame var1, DatabaseManager var2, String var3) {
+      this.parent = var1;
+      this.dbManager = var2;
+      this.currentUser = var3;
+      if (var1 instanceof JobListingApp) {
+         this.mainApp = (JobListingApp)var1;
+      }
+
+   }
+
+   public void setRefreshCallback(Runnable var1) {
+      this.refreshCallback = var1;
+   }
+
+   public void showAdminApplicationsDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udccb Job Applications", true);
+      var1.setSize(900, 500);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udccb Application Management");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+      var1.add(var2, "North");
+      String[] var4 = new String[]{"ID", "Applicant", "Job Title", "Company", "Name", "Email", "Phone", "Status", "Date"};
+      DefaultTableModel var5 = new DefaultTableModel(var4, 0) {
+         public boolean isCellEditable(int var1, int var2) {
+            return false;
+         }
+      };
+      JTable var6 = new JTable(var5);
+      var6.setFont(AppTheme.FONT_TABLE);
+      var6.setRowHeight(35);
+      var6.setSelectionMode(0);
+      this.loadApplicationsToTable(var5);
+      JScrollPane var7 = new JScrollPane(var6);
+      var7.setBorder(new EmptyBorder(10, 10, 10, 10));
+      var1.add(var7, "Center");
+      JPanel var8 = new JPanel(new FlowLayout(1, 10, 10));
+      var8.setBackground(AppTheme.BG_COLOR);
+      JButton var9 = UIHelper.createStyledButton("\ud83d\udcde Contact", new Color(52, 152, 219));
+      var9.setPreferredSize(new Dimension(120, 35));
+      var9.addActionListener((var4x) -> {
+         int var5x = var6.getSelectedRow();
+         if (var5x == -1) {
+            UIHelper.showWarningDialog(var1, "Please select an application.");
+         } else {
+            String var6x = String.valueOf(var5.getValueAt(var5x, 4));
+            String var7 = String.valueOf(var5.getValueAt(var5x, 5));
+            String var8 = String.valueOf(var5.getValueAt(var5x, 6));
+            this.showContactDialog(var1, var6x, var7, var8);
+         }
+      });
+      JButton var10 = UIHelper.createStyledButton("✅ Approve", AppTheme.ACCENT_COLOR);
+      var10.setPreferredSize(new Dimension(120, 35));
+      var10.addActionListener((var4x) -> {
+         int var5x = var6.getSelectedRow();
+         if (var5x == -1) {
+            UIHelper.showWarningDialog(var1, "Please select an application.");
+         } else {
+            int var6x = Integer.parseInt(String.valueOf(var5.getValueAt(var5x, 0)));
+            String var7 = String.valueOf(var5.getValueAt(var5x, 1));
+            String var8 = String.valueOf(var5.getValueAt(var5x, 2));
+            this.updateApplicationStatus(var6x, var7, var8, "Approved", var5, var5x, var1);
+         }
+      });
+      JButton var11 = UIHelper.createStyledButton("❌ Reject", AppTheme.DANGER_COLOR);
+      var11.setPreferredSize(new Dimension(120, 35));
+      var11.addActionListener((var4x) -> {
+         int var5x = var6.getSelectedRow();
+         if (var5x == -1) {
+            UIHelper.showWarningDialog(var1, "Please select an application.");
+         } else {
+            int var6x = Integer.parseInt(String.valueOf(var5.getValueAt(var5x, 0)));
+            String var7 = String.valueOf(var5.getValueAt(var5x, 1));
+            String var8 = String.valueOf(var5.getValueAt(var5x, 2));
+            this.updateApplicationStatus(var6x, var7, var8, "Rejected", var5, var5x, var1);
+         }
+      });
+      JButton var12 = UIHelper.createStyledButton("\ud83d\udd04 Refresh", new Color(52, 73, 94));
+      var12.setPreferredSize(new Dimension(120, 35));
+      var12.addActionListener((var2x) -> {
+         var5.setRowCount(0);
+         this.loadApplicationsToTable(var5);
+      });
+      JButton var13 = UIHelper.createStyledButton("Close", new Color(149, 165, 166));
+      var13.setPreferredSize(new Dimension(100, 35));
+      var13.addActionListener((var1x) -> {
+         var1.dispose();
+      });
+      var8.add(var9);
+      var8.add(var10);
+      var8.add(var11);
+      var8.add(var12);
+      var8.add(var13);
+      var1.add(var8, "South");
+      var1.setVisible(true);
+   }
+
+   private void loadApplicationsToTable(DefaultTableModel var1) {
+      try {
+         List var2 = this.dbManager.getAllApplications();
+         Iterator var3 = var2.iterator();
+
+         while(var3.hasNext()) {
+            Object[] var4 = (Object[])var3.next();
+            var1.addRow(new Object[]{var4[0], var4[1], var4[2], var4[3], var4[4], var4[5], var4[6], var4[8], var4[9]});
+         }
+      } catch (SQLException var5) {
+         UIHelper.showErrorDialog(this.parent, "Error loading applications: " + var5.getMessage());
+      }
+
+   }
+
+   private void updateApplicationStatus(int var1, String var2, String var3, String var4, DefaultTableModel var5, int var6, JDialog var7) {
+      try {
+         if (this.dbManager.updateApplicationStatus(var1, var4)) {
+            var5.setValueAt(var4, var6, 7);
+            String var8 = "Your application for '" + var3 + "' has been " + var4.toLowerCase() + ".";
+            this.dbManager.addNotification(var2, var3, var8, var4);
+            UIHelper.showSuccessDialog(var7, "Application " + var4.toLowerCase() + "! Customer has been notified.");
+         }
+      } catch (SQLException var9) {
+         UIHelper.showErrorDialog(var7, "Error: " + var9.getMessage());
+      }
+
+   }
+
+   public void showAdminNotificationsDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udd14 Admin Notifications", true);
+      var1.setSize(600, 400);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udd14 Admin Notifications");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+      var1.add(var2, "North");
+      JPanel var4 = new JPanel();
+      var4.setLayout(new BoxLayout(var4, 1));
+      var4.setBackground(AppTheme.BG_COLOR);
+      var4.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+      try {
+         List var5 = this.dbManager.getAllNotifications("admin");
+         if (var5.isEmpty()) {
+            JLabel var11 = new JLabel("No notifications yet.");
+            var11.setFont(AppTheme.FONT_SUBTITLE);
+            var11.setForeground(AppTheme.TEXT_SECONDARY);
+            var11.setAlignmentX(0.5F);
+            var4.add(Box.createVerticalGlue());
+            var4.add(var11);
+            var4.add(Box.createVerticalGlue());
+         } else {
+            Iterator var6 = var5.iterator();
+
+            while(var6.hasNext()) {
+               Object[] var7 = (Object[])var6.next();
+               JPanel var8 = this.createNotificationCard(var7);
+               var4.add(var8);
+               var4.add(Box.createVerticalStrut(10));
+            }
+         }
+
+         this.dbManager.markAllNotificationsAsRead("admin");
+      } catch (SQLException var9) {
+         UIHelper.showErrorDialog(var1, "Error: " + var9.getMessage());
+      }
+
+      JScrollPane var10 = new JScrollPane(var4);
+      var10.setBorder((Border)null);
+      var10.getVerticalScrollBar().setUnitIncrement(16);
+      var1.add(var10, "Center");
+      JPanel var12 = new JPanel(new FlowLayout(1, 10, 10));
+      var12.setBackground(AppTheme.BG_COLOR);
+      JButton var13 = UIHelper.createStyledButton("Close", new Color(149, 165, 166));
+      var13.setPreferredSize(new Dimension(100, 35));
+      var13.addActionListener((var2x) -> {
+         var1.dispose();
+         if (this.refreshCallback != null) {
+            this.refreshCallback.run();
+         }
+
+      });
+      var12.add(var13);
+      var1.add(var12, "South");
+      var1.setVisible(true);
+   }
+
+   private void showContactDialog(JDialog var1, String var2, String var3, String var4) {
+      JDialog var5 = new JDialog(var1, "\ud83d\udcde Contact Information", true);
+      var5.setSize(400, 250);
+      var5.setLocationRelativeTo(var1);
+      var5.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var5.setLayout(new BorderLayout(10, 10));
+      JPanel var6 = new JPanel(new BorderLayout());
+      var6.setBackground(new Color(52, 152, 219));
+      var6.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var7 = new JLabel("\ud83d\udcde Contact Information");
+      var7.setFont(AppTheme.FONT_HEADER);
+      var7.setForeground(Color.WHITE);
+      var6.add(var7, "West");
+      var5.add(var6, "North");
+      JPanel var8 = UIHelper.createCardPanel(25);
+      var8.setBorder(new EmptyBorder(20, 30, 20, 30));
+      var8.setLayout(new BoxLayout(var8, 1));
+      this.addContactRow(var8, "Name:", var2);
+      this.addContactRow(var8, "Email:", var3);
+      this.addContactRow(var8, "Phone:", var4 != null && !var4.isEmpty() ? var4 : "Not provided");
+      var5.add(var8, "Center");
+      JPanel var9 = new JPanel(new FlowLayout(1, 10, 10));
+      var9.setBackground(AppTheme.BG_COLOR);
+      JButton var10 = UIHelper.createStyledButton("Close", new Color(149, 165, 166));
+      var10.setPreferredSize(new Dimension(100, 35));
+      var10.addActionListener((var1x) -> {
+         var5.dispose();
+      });
+      var9.add(var10);
+      var5.add(var9, "South");
+      var5.setVisible(true);
+   }
+
+   private void addContactRow(JPanel var1, String var2, String var3) {
+      JPanel var4 = new JPanel(new BorderLayout(10, 5));
+      var4.setOpaque(false);
+      var4.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+      JLabel var5 = new JLabel(var2);
+      var5.setFont(AppTheme.FONT_LABEL);
+      var5.setForeground(AppTheme.TEXT_PRIMARY);
+      var5.setPreferredSize(new Dimension(80, 20));
+      var4.add(var5, "West");
+      JLabel var6 = new JLabel(var3);
+      var6.setFont(AppTheme.FONT_SUBTITLE);
+      var6.setForeground(AppTheme.TEXT_SECONDARY);
+      var4.add(var6, "Center");
+      var1.add(var4);
+      var1.add(Box.createVerticalStrut(12));
+   }
+
+   public void showApplyJobDialog(String var1, String var2) {
+      JDialog var3 = new JDialog(this.parent, "\ud83d\udcdd Apply for Job", true);
+      var3.setSize(500, 500);
+      var3.setLocationRelativeTo(this.parent);
+      var3.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var3.setLayout(new BorderLayout(10, 10));
+      JPanel var4 = new JPanel(new BorderLayout());
+      var4.setBackground(AppTheme.ACCENT_COLOR);
+      var4.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var5 = new JLabel("\ud83d\udcdd Job Application");
+      var5.setFont(AppTheme.FONT_HEADER);
+      var5.setForeground(Color.WHITE);
+      var4.add(var5, "West");
+      var3.add(var4, "North");
+      JPanel var6 = UIHelper.createCardPanel(25);
+      var6.setBorder(new EmptyBorder(20, 30, 20, 30));
+      JLabel var7 = new JLabel("<html><b>" + var1 + "</b><br>" + var2 + "</html>");
+      var7.setFont(AppTheme.FONT_SUBTITLE);
+      var7.setForeground(AppTheme.TEXT_SECONDARY);
+      var7.setAlignmentX(0.0F);
+      var6.add(var7);
+      var6.add(Box.createVerticalStrut(20));
+      var6.add(UIHelper.createFormLabel("Full Name *"));
+      JTextField var8 = UIHelper.createStyledTextField(20);
+      var8.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var8.setAlignmentX(0.0F);
+      var6.add(var8);
+      var6.add(Box.createVerticalStrut(12));
+      var6.add(UIHelper.createFormLabel("Email *"));
+      JTextField var9 = UIHelper.createStyledTextField(20);
+      var9.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var9.setAlignmentX(0.0F);
+      var6.add(var9);
+      var6.add(Box.createVerticalStrut(12));
+      var6.add(UIHelper.createFormLabel("Phone Number"));
+      JTextField var10 = UIHelper.createStyledTextField(20);
+      var10.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var10.setAlignmentX(0.0F);
+      var6.add(var10);
+      var6.add(Box.createVerticalStrut(12));
+      var6.add(UIHelper.createFormLabel("Cover Letter"));
+      JTextArea var11 = UIHelper.createStyledTextArea(4, 20);
+      JScrollPane var12 = new JScrollPane(var11);
+      var12.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+      var12.setAlignmentX(0.0F);
+      var6.add(var12);
+      var3.add(var6, "Center");
+      JPanel var13 = new JPanel(new FlowLayout(1, 10, 15));
+      var13.setBackground(AppTheme.BG_COLOR);
+      JButton var14 = UIHelper.createStyledButton("\ud83d\udce8 Submit Application", AppTheme.ACCENT_COLOR);
+      var14.setPreferredSize(new Dimension(180, 40));
+      var14.addActionListener((var8x) -> {
+         String var9x = var8.getText().trim();
+         String var10x = var9.getText().trim();
+         if (!var9x.isEmpty() && !var10x.isEmpty()) {
+            try {
+               if (this.dbManager.addApplication(this.currentUser, var1, var2, var9x, var10x, var10.getText().trim(), var11.getText().trim())) {
+                  UIHelper.showSuccessDialog(var3, "Application submitted successfully! Admin has been notified and will review your application.");
+                  var3.dispose();
+                  if (this.refreshCallback != null) {
+                     this.refreshCallback.run();
+                  }
+               }
+            } catch (SQLException var12) {
+               UIHelper.showErrorDialog(var3, "Error: " + var12.getMessage());
+            }
+
+         } else {
+            UIHelper.showWarningDialog(var3, "Name and Email are required.");
+         }
+      });
+      JButton var15 = UIHelper.createStyledButton("Cancel", new Color(149, 165, 166));
+      var15.setPreferredSize(new Dimension(100, 40));
+      var15.addActionListener((var1x) -> {
+         var3.dispose();
+      });
+      var13.add(var14);
+      var13.add(var15);
+      var3.add(var13, "South");
+      var3.setVisible(true);
+   }
+
+   public void showMyApplicationsDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udccb My Applications", true);
+      var1.setSize(700, 400);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udccb My Job Applications");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+      var1.add(var2, "North");
+      String[] var4 = new String[]{"ID", "Job Title", "Company", "Name", "Email", "Status", "Date"};
+      DefaultTableModel var5 = new DefaultTableModel(var4, 0) {
+         public boolean isCellEditable(int var1, int var2) {
+            return false;
+         }
+      };
+      JTable var6 = new JTable(var5);
+      var6.setFont(AppTheme.FONT_TABLE);
+      var6.setRowHeight(35);
+      var6.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            String var8 = String.valueOf(var2);
+            if ("Approved".equals(var8)) {
+               var7.setForeground(AppTheme.ACCENT_COLOR);
+            } else if ("Rejected".equals(var8)) {
+               var7.setForeground(AppTheme.DANGER_COLOR);
+            } else {
+               var7.setForeground(AppTheme.WARNING_COLOR);
+            }
+
+            var7.setFont(new Font("Segoe UI", 1, 12));
+            return var7;
+         }
+      });
+
+      try {
+         List var7 = this.dbManager.getUserApplications(this.currentUser);
+         Iterator var8 = var7.iterator();
+
+         while(var8.hasNext()) {
+            Object[] var9 = (Object[])var8.next();
+            var5.addRow(var9);
+         }
+      } catch (SQLException var10) {
+         UIHelper.showErrorDialog(var1, "Error loading applications: " + var10.getMessage());
+      }
+
+      JScrollPane var11 = new JScrollPane(var6);
+      var11.setBorder(new EmptyBorder(10, 10, 10, 10));
+      var1.add(var11, "Center");
+      JPanel var12 = new JPanel(new FlowLayout(1, 10, 10));
+      var12.setBackground(AppTheme.BG_COLOR);
+      JButton var13 = UIHelper.createStyledButton("Close", new Color(149, 165, 166));
+      var13.setPreferredSize(new Dimension(100, 35));
+      var13.addActionListener((var1x) -> {
+         var1.dispose();
+      });
+      var12.add(var13);
+      var1.add(var12, "South");
+      var1.setVisible(true);
+   }
+
+   public void showNotificationsDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udd14 Notifications", true);
+      var1.setSize(600, 400);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udd14 My Notifications");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+      var1.add(var2, "North");
+      JPanel var4 = new JPanel();
+      var4.setLayout(new BoxLayout(var4, 1));
+      var4.setBackground(AppTheme.BG_COLOR);
+      var4.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+      try {
+         List var5 = this.dbManager.getAllNotifications(this.currentUser);
+         if (var5.isEmpty()) {
+            JLabel var11 = new JLabel("No notifications yet.");
+            var11.setFont(AppTheme.FONT_SUBTITLE);
+            var11.setForeground(AppTheme.TEXT_SECONDARY);
+            var11.setAlignmentX(0.5F);
+            var4.add(Box.createVerticalGlue());
+            var4.add(var11);
+            var4.add(Box.createVerticalGlue());
+         } else {
+            Iterator var6 = var5.iterator();
+
+            while(var6.hasNext()) {
+               Object[] var7 = (Object[])var6.next();
+               JPanel var8 = this.createNotificationCard(var7);
+               var4.add(var8);
+               var4.add(Box.createVerticalStrut(10));
+            }
+         }
+
+         this.dbManager.markAllNotificationsAsRead(this.currentUser);
+      } catch (SQLException var9) {
+         UIHelper.showErrorDialog(var1, "Error: " + var9.getMessage());
+      }
+
+      JScrollPane var10 = new JScrollPane(var4);
+      var10.setBorder((Border)null);
+      var10.getVerticalScrollBar().setUnitIncrement(16);
+      var1.add(var10, "Center");
+      JPanel var12 = new JPanel(new FlowLayout(1, 10, 10));
+      var12.setBackground(AppTheme.BG_COLOR);
+      JButton var13 = UIHelper.createStyledButton("Close", new Color(149, 165, 166));
+      var13.setPreferredSize(new Dimension(100, 35));
+      var13.addActionListener((var2x) -> {
+         var1.dispose();
+         if (this.refreshCallback != null) {
+            this.refreshCallback.run();
+         }
+
+      });
+      var12.add(var13);
+      var1.add(var12, "South");
+      var1.setVisible(true);
+   }
+
+   private JPanel createNotificationCard(Object[] var1) {
+      JPanel var2 = new JPanel(new BorderLayout(10, 5));
+      var2.setBackground(Color.WHITE);
+      var2.setBorder(BorderFactory.createCompoundBorder(new LineBorder(AppTheme.BORDER_COLOR, 1), new EmptyBorder(15, 15, 15, 15)));
+      var2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+      String var3 = String.valueOf(var1[3]);
+      String var4 = "Approved".equals(var3) ? "✅" : "❌";
+      Color var5 = "Approved".equals(var3) ? AppTheme.ACCENT_COLOR : AppTheme.DANGER_COLOR;
+      JLabel var6 = new JLabel(var4);
+      var6.setFont(new Font("Segoe UI Emoji", 0, 24));
+      var2.add(var6, "West");
+      JPanel var7 = new JPanel();
+      var7.setLayout(new BoxLayout(var7, 1));
+      var7.setOpaque(false);
+      JLabel var8 = new JLabel(String.valueOf(var1[1]));
+      var8.setFont(new Font("Segoe UI", 1, 14));
+      var8.setForeground(AppTheme.TEXT_PRIMARY);
+      var7.add(var8);
+      JLabel var9 = new JLabel(String.valueOf(var1[2]));
+      var9.setFont(AppTheme.FONT_SUBTITLE);
+      var9.setForeground(AppTheme.TEXT_SECONDARY);
+      var7.add(var9);
+      var2.add(var7, "Center");
+      JLabel var10 = new JLabel(var3);
+      var10.setFont(new Font("Segoe UI", 1, 12));
+      var10.setForeground(var5);
+      var2.add(var10, "East");
+      return var2;
+   }
+
+   public void showResumeDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udcc4 My Resume", true);
+      var1.setSize(600, 700);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udcc4 My Resume");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+      var1.add(var2, "North");
+      JPanel var4 = UIHelper.createCardPanel(25);
+      var4.setBorder(new EmptyBorder(20, 30, 20, 30));
+      var4.setLayout(new BoxLayout(var4, 1));
+      var4.add(UIHelper.createFormLabel("Full Name *"));
+      JTextField var5 = UIHelper.createStyledTextField(20);
+      var5.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var5.setAlignmentX(0.0F);
+      var4.add(var5);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Email *"));
+      JTextField var6 = UIHelper.createStyledTextField(20);
+      var6.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var6.setAlignmentX(0.0F);
+      var4.add(var6);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Phone Number"));
+      JTextField var7 = UIHelper.createStyledTextField(20);
+      var7.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var7.setAlignmentX(0.0F);
+      var4.add(var7);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Address"));
+      JTextArea var8 = UIHelper.createStyledTextArea(2, 20);
+      JScrollPane var9 = new JScrollPane(var8);
+      var9.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+      var9.setAlignmentX(0.0F);
+      var4.add(var9);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Education"));
+      JTextArea var10 = UIHelper.createStyledTextArea(3, 20);
+      JScrollPane var11 = new JScrollPane(var10);
+      var11.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+      var11.setAlignmentX(0.0F);
+      var4.add(var11);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Work Experience"));
+      JTextArea var12 = UIHelper.createStyledTextArea(3, 20);
+      JScrollPane var13 = new JScrollPane(var12);
+      var13.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+      var13.setAlignmentX(0.0F);
+      var4.add(var13);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Skills"));
+      JTextArea var14 = UIHelper.createStyledTextArea(2, 20);
+      JScrollPane var15 = new JScrollPane(var14);
+      var15.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+      var15.setAlignmentX(0.0F);
+      var4.add(var15);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Professional Summary"));
+      JTextArea var16 = UIHelper.createStyledTextArea(3, 20);
+      JScrollPane var17 = new JScrollPane(var16);
+      var17.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+      var17.setAlignmentX(0.0F);
+      var4.add(var17);
+      boolean var18 = false;
+
+      try {
+         Object[] var19 = this.dbManager.getResume(this.currentUser);
+         if (var19 != null) {
+            String var20 = var19[0] != null ? String.valueOf(var19[0]) : "";
+            String var21 = var19[1] != null ? String.valueOf(var19[1]) : "";
+            var5.setText(var20);
+            var6.setText(var21);
+            var7.setText(var19[2] != null ? String.valueOf(var19[2]) : "");
+            var8.setText(var19[3] != null ? String.valueOf(var19[3]) : "");
+            var10.setText(var19[4] != null ? String.valueOf(var19[4]) : "");
+            var12.setText(var19[5] != null ? String.valueOf(var19[5]) : "");
+            var14.setText(var19[6] != null ? String.valueOf(var19[6]) : "");
+            var16.setText(var19[7] != null ? String.valueOf(var19[7]) : "");
+            var18 = !var20.isEmpty() && !var21.isEmpty();
+         }
+      } catch (SQLException var23) {
+         UIHelper.showErrorDialog(var1, "Error loading resume: " + var23.getMessage());
+      }
+
+      JScrollPane var24 = new JScrollPane(var4);
+      var24.setBorder((Border)null);
+      var24.getVerticalScrollBar().setUnitIncrement(16);
+      var1.add(var24, "Center");
+      JPanel var25 = new JPanel(new FlowLayout(1, 10, 15));
+      var25.setBackground(AppTheme.BG_COLOR);
+      JButton var26 = UIHelper.createStyledButton("\ud83d\udcbe Save Resume", AppTheme.ACCENT_COLOR);
+      var26.setPreferredSize(new Dimension(150, 40));
+      var26.addActionListener((var10x) -> {
+         String var11 = var5.getText().trim();
+         String var12x = var6.getText().trim();
+         if (!var11.isEmpty() && !var12x.isEmpty()) {
+            try {
+               if (this.dbManager.saveOrUpdateResume(this.currentUser, var11, var12x, var7.getText().trim(), var8.getText().trim(), var10.getText().trim(), var12.getText().trim(), var14.getText().trim(), var16.getText().trim())) {
+                  UIHelper.showSuccessDialog(var1, "Resume saved successfully!");
+                  var1.dispose();
+                  this.showResumeDialog();
+               }
+            } catch (SQLException var14x) {
+               UIHelper.showErrorDialog(var1, "Error saving resume: " + var14x.getMessage());
+            }
+
+         } else {
+            UIHelper.showWarningDialog(var1, "Full Name and Email are required.");
+         }
+      });
+      JButton var22;
+      if (var18) {
+         var22 = UIHelper.createStyledButton("\ud83d\udccb Apply for Job", AppTheme.PRIMARY_COLOR);
+         var22.setPreferredSize(new Dimension(180, 40));
+         var22.addActionListener((var2x) -> {
+            var1.dispose();
+            if (this.mainApp != null) {
+               this.mainApp.openJobListWindow();
+            } else {
+               JOptionPane.showMessageDialog(this.parent, "Please open the Job List window to apply for jobs.", "Info", 1);
+            }
+
+         });
+         var25.add(var22);
+      }
+
+      var22 = UIHelper.createStyledButton("Cancel", new Color(149, 165, 166));
+      var22.setPreferredSize(new Dimension(100, 40));
+      var22.addActionListener((var1x) -> {
+         var1.dispose();
+      });
+      var25.add(var26);
+      var25.add(var22);
+      var1.add(var25, "South");
+      var1.setVisible(true);
+   }
+
+   public void showAdminContactMessagesDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udce7 Customer Concerns", true);
+      var1.setSize(1000, 600);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udce7 Customer Concerns & Messages");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+
+      try {
+         int var4 = this.dbManager.getUnreadContactMessageCount();
+         if (var4 > 0) {
+            JLabel var5 = new JLabel("Unread: " + var4);
+            var5.setFont(AppTheme.FONT_SUBTITLE);
+            var5.setForeground(AppTheme.DANGER_COLOR);
+            var5.setForeground(new Color(255, 255, 255));
+            var2.add(var5, "East");
+         }
+      } catch (SQLException var19) {
+      }
+
+      var1.add(var2, "North");
+      String[] var21 = new String[]{"ID", "Username", "Subject", "Email", "Phone", "Status", "Date"};
+      DefaultTableModel var22 = new DefaultTableModel(var21, 0) {
+         public boolean isCellEditable(int var1, int var2) {
+            return false;
+         }
+      };
+      JTable var6 = new JTable(var22);
+      var6.setFont(AppTheme.FONT_TABLE);
+      var6.setRowHeight(35);
+      var6.setSelectionMode(0);
+      JTableHeader var7 = var6.getTableHeader();
+      var7.setFont(AppTheme.FONT_TABLE_HEADER);
+      var7.setBackground(AppTheme.PRIMARY_COLOR);
+      var7.setForeground(Color.WHITE);
+
+      try {
+         List var8 = this.dbManager.getAllContactMessages();
+         Iterator var9 = var8.iterator();
+
+         while(var9.hasNext()) {
+            Object[] var10 = (Object[])var9.next();
+            var22.addRow(new Object[]{var10[0], var10[1], var10[2], var10[4], var10[5], var10[6], var10[9]});
+         }
+      } catch (SQLException var20) {
+         UIHelper.showErrorDialog(var1, "Error loading messages: " + var20.getMessage());
+      }
+
+      JScrollPane var23 = new JScrollPane(var6);
+      var23.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      var1.add(var23, "Center");
+      JPanel var24 = UIHelper.createCardPanel(15);
+      var24.setLayout(new BoxLayout(var24, 1));
+      var24.setBorder(new EmptyBorder(15, 15, 15, 15));
+      var24.setPreferredSize(new Dimension(0, 200));
+      JLabel var25 = new JLabel("Message Details:");
+      var25.setFont(AppTheme.FONT_LABEL);
+      var25.setForeground(AppTheme.TEXT_PRIMARY);
+      var24.add(var25);
+      var24.add(Box.createVerticalStrut(10));
+      JTextArea var11 = new JTextArea();
+      var11.setFont(AppTheme.FONT_SUBTITLE);
+      var11.setEditable(false);
+      var11.setOpaque(false);
+      var11.setLineWrap(true);
+      var11.setWrapStyleWord(true);
+      var11.setForeground(AppTheme.TEXT_SECONDARY);
+      JTextArea var12 = new JTextArea(3, 30);
+      var12.setFont(AppTheme.FONT_SUBTITLE);
+      var12.setLineWrap(true);
+      var12.setWrapStyleWord(true);
+      var12.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      JLabel var13 = new JLabel("Admin Response:");
+      var13.setFont(AppTheme.FONT_LABEL);
+      var13.setForeground(AppTheme.TEXT_PRIMARY);
+      JScrollPane var14 = new JScrollPane(var11);
+      var14.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      var14.setPreferredSize(new Dimension(0, 80));
+      JScrollPane var15 = new JScrollPane(var12);
+      var15.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      var15.setPreferredSize(new Dimension(0, 60));
+      var24.add(var14);
+      var24.add(Box.createVerticalStrut(10));
+      var24.add(var13);
+      var24.add(Box.createVerticalStrut(5));
+      var24.add(var15);
+      var6.getSelectionModel().addListSelectionListener((var6x) -> {
+         int var7 = var6.getSelectedRow();
+         if (var7 >= 0) {
+            try {
+               int var8 = (Integer)var22.getValueAt(var7, 0);
+               List var9 = this.dbManager.getAllContactMessages();
+               Iterator var10 = var9.iterator();
+
+               while(var10.hasNext()) {
+                  Object[] var11x = (Object[])var10.next();
+                  if ((Integer)var11x[0] == var8) {
+                     String var12x = (String)var11x[3];
+                     String var13 = (String)var11x[8];
+                     var11.setText("Message: " + var12x);
+                     if (var13 != null && !var13.trim().isEmpty()) {
+                        var12.setText(var13);
+                     } else {
+                        var12.setText("");
+                     }
+
+                     this.dbManager.markContactMessageAsRead(var8);
+                     break;
+                  }
+               }
+            } catch (SQLException var14) {
+               UIHelper.showErrorDialog(var1, "Error: " + var14.getMessage());
+            }
+         }
+
+      });
+      var1.add(var24, "South");
+      JPanel var16 = new JPanel(new FlowLayout(1, 10, 15));
+      var16.setBackground(AppTheme.BG_COLOR);
+      JButton var17 = UIHelper.createStyledButton("✅ Respond & Mark as Resolved", new Color(46, 125, 50));
+      var17.setPreferredSize(new Dimension(220, 40));
+      var17.addActionListener((var5x) -> {
+         int var6x = var6.getSelectedRow();
+         if (var6x == -1) {
+            UIHelper.showWarningDialog(var1, "Please select a message first.");
+         } else {
+            String var7 = var12.getText().trim();
+            if (var7.isEmpty()) {
+               UIHelper.showWarningDialog(var1, "Please enter a response.");
+            } else {
+               try {
+                  int var8 = (Integer)var22.getValueAt(var6x, 0);
+                  if (this.dbManager.updateContactMessageStatus(var8, "Resolved", var7)) {
+                     UIHelper.showSuccessDialog(var1, "Response sent successfully!");
+                     var12.setText("");
+                     var22.setRowCount(0);
+                     List var9 = this.dbManager.getAllContactMessages();
+                     Iterator var10 = var9.iterator();
+
+                     while(var10.hasNext()) {
+                        Object[] var11 = (Object[])var10.next();
+                        var22.addRow(new Object[]{var11[0], var11[1], var11[2], var11[4], var11[5], var11[6], var11[9]});
+                     }
+                  }
+               } catch (SQLException var12x) {
+                  UIHelper.showErrorDialog(var1, "Error: " + var12x.getMessage());
+               }
+
+            }
+         }
+      });
+      JButton var18 = UIHelper.createStyledButton("Close", AppTheme.PRIMARY_COLOR);
+      var18.setPreferredSize(new Dimension(100, 40));
+      var18.addActionListener((var1x) -> {
+         var1.dispose();
+      });
+      var16.add(var17);
+      var16.add(var18);
+      var1.add(var16, "South");
+      var1.setVisible(true);
+   }
+
+   public void showUserManagementDialog() {
+      JDialog var1 = new JDialog(this.parent, "\ud83d\udc65 User Management", true);
+      var1.setSize(900, 600);
+      var1.setLocationRelativeTo(this.parent);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.PRIMARY_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("\ud83d\udc65 User Management - All Users");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+
+      try {
+         int var4 = this.dbManager.getActiveUserCount();
+         JLabel var5 = new JLabel("Active: " + var4);
+         var5.setFont(AppTheme.FONT_SUBTITLE);
+         var5.setForeground(new Color(255, 255, 255));
+         var2.add(var5, "East");
+      } catch (SQLException var16) {
+      }
+
+      var1.add(var2, "North");
+      String[] var18 = new String[]{"ID", "Username", "Password", "Role", "Status", "Last Login", "Last Logout"};
+      DefaultTableModel var19 = new DefaultTableModel(var18, 0) {
+         public boolean isCellEditable(int var1, int var2) {
+            return false;
+         }
+      };
+      JTable var6 = new JTable(var19);
+      var6.setFont(AppTheme.FONT_TABLE);
+      var6.setRowHeight(35);
+      var6.setSelectionMode(0);
+      JTableHeader var7 = var6.getTableHeader();
+      var7.setFont(AppTheme.FONT_TABLE_HEADER);
+      var7.setBackground(AppTheme.PRIMARY_COLOR);
+      var7.setForeground(Color.WHITE);
+      var6.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            String var8 = var2 != null ? var2.toString() : "";
+            var7.setText("\ud83d\udd11 " + var8);
+            var7.setForeground(new Color(128, 0, 128));
+            var7.setHorizontalAlignment(2);
+            return var7;
+         }
+      });
+      var6.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            String var8 = var2 != null ? var2.toString() : "";
+            if ("Admin".equals(var8)) {
+               var7.setForeground(AppTheme.PRIMARY_COLOR);
+               var7.setText("\ud83d\udd10 " + var8);
+            } else {
+               var7.setForeground(AppTheme.TEXT_SECONDARY);
+               var7.setText("\ud83d\udc64 " + var8);
+            }
+
+            var7.setHorizontalAlignment(0);
+            return var7;
+         }
+      });
+      var6.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            String var8 = var2 != null ? var2.toString() : "Offline";
+            if ("Online".equals(var8)) {
+               var7.setForeground(new Color(46, 125, 50));
+               var7.setText("\ud83d\udfe2 " + var8);
+            } else {
+               var7.setForeground(AppTheme.TEXT_SECONDARY);
+               var7.setText("⚫ " + var8);
+            }
+
+            var7.setHorizontalAlignment(0);
+            return var7;
+         }
+      });
+      var6.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            String var8 = var2 != null ? var2.toString() : "Never";
+            if (!"Never".equals(var8)) {
+               var7.setText("\ud83d\udd50 " + var8);
+               var7.setForeground(AppTheme.TEXT_PRIMARY);
+            } else {
+               var7.setText("Never");
+               var7.setForeground(AppTheme.TEXT_SECONDARY);
+            }
+
+            var7.setHorizontalAlignment(2);
+            return var7;
+         }
+      });
+      var6.getColumnModel().getColumn(6).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            String var8 = var2 != null ? var2.toString() : "N/A";
+            if (!"N/A".equals(var8) && !var8.isEmpty()) {
+               var7.setText("\ud83d\udd50 " + var8);
+               var7.setForeground(AppTheme.TEXT_PRIMARY);
+            } else {
+               var7.setText("N/A");
+               var7.setForeground(AppTheme.TEXT_SECONDARY);
+            }
+
+            var7.setHorizontalAlignment(2);
+            return var7;
+         }
+      });
+
+      try {
+         List var8 = this.dbManager.getAllUsersWithSessions();
+         Iterator var9 = var8.iterator();
+
+         while(var9.hasNext()) {
+            Object[] var10 = (Object[])var9.next();
+            String var11 = var10[6] != null ? var10[6].toString() : "N/A";
+            var19.addRow(new Object[]{var10[0], var10[1], var10[2], var10[3], var10[4], var10[5], var11});
+         }
+      } catch (SQLException var17) {
+         UIHelper.showErrorDialog(var1, "Error loading users: " + var17.getMessage());
+      }
+
+      var6.getColumnModel().getColumn(0).setPreferredWidth(50);
+      var6.getColumnModel().getColumn(1).setPreferredWidth(150);
+      var6.getColumnModel().getColumn(2).setPreferredWidth(120);
+      var6.getColumnModel().getColumn(3).setPreferredWidth(120);
+      var6.getColumnModel().getColumn(4).setPreferredWidth(100);
+      var6.getColumnModel().getColumn(5).setPreferredWidth(200);
+      var6.getColumnModel().getColumn(6).setPreferredWidth(200);
+      JScrollPane var20 = new JScrollPane(var6);
+      var20.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      var1.add(var20, "Center");
+      JPanel var21 = UIHelper.createCardPanel(15);
+      var21.setLayout(new BoxLayout(var21, 1));
+      var21.setBorder(new EmptyBorder(15, 15, 15, 15));
+      var21.setPreferredSize(new Dimension(0, 100));
+      JLabel var22 = new JLabel("<html><b>Legend:</b><br>\ud83d\udfe2 Online - User is currently logged in<br>⚫ Offline - User is not logged in<br>\ud83d\udd10 Admin - Administrator account<br>\ud83d\udc64 Customer - Regular user account</html>");
+      var22.setFont(AppTheme.FONT_SUBTITLE);
+      var22.setForeground(AppTheme.TEXT_SECONDARY);
+      var21.add(var22);
+      var1.add(var21, "South");
+      JPanel var23 = new JPanel(new FlowLayout(1, 10, 10));
+      var23.setBackground(AppTheme.BG_COLOR);
+      var23.setBorder(new EmptyBorder(10, 20, 10, 20));
+      JButton var12 = UIHelper.createStyledButton("\ud83d\udd04 Refresh", AppTheme.PRIMARY_COLOR);
+      var12.setPreferredSize(new Dimension(120, 35));
+      var12.addActionListener((var5x) -> {
+         var19.setRowCount(0);
+
+         try {
+            List var6 = this.dbManager.getAllUsersWithSessions();
+            Iterator var7 = var6.iterator();
+
+            while(var7.hasNext()) {
+               Object[] var8 = (Object[])var7.next();
+               String var9 = var8[6] != null ? var8[6].toString() : "N/A";
+               var19.addRow(new Object[]{var8[0], var8[1], var8[2], var8[3], var8[4], var8[5], var9});
+            }
+
+            int var11 = this.dbManager.getActiveUserCount();
+            var2.removeAll();
+            var2.add(var3, "West");
+            JLabel var12 = new JLabel("Active: " + var11);
+            var12.setFont(AppTheme.FONT_SUBTITLE);
+            var12.setForeground(new Color(255, 255, 255));
+            var2.add(var12, "East");
+            var2.revalidate();
+            var2.repaint();
+         } catch (SQLException var10) {
+            UIHelper.showErrorDialog(var1, "Error refreshing: " + var10.getMessage());
+         }
+
+      });
+      JButton var13 = UIHelper.createStyledButton("\ud83d\uddd1️ Delete User", AppTheme.DANGER_COLOR);
+      var13.setPreferredSize(new Dimension(140, 35));
+      var13.addActionListener((var6x) -> {
+         int var7 = var6.getSelectedRow();
+         if (var7 == -1) {
+            UIHelper.showWarningDialog(var1, "Please select a user to delete.");
+         } else {
+            int var8 = (Integer)var19.getValueAt(var7, 0);
+            String var9 = String.valueOf(var19.getValueAt(var7, 1));
+            String var10 = String.valueOf(var19.getValueAt(var7, 3));
+            if ("Admin".equals(var10) && "admin".equalsIgnoreCase(var9)) {
+               UIHelper.showErrorDialog(var1, "Cannot delete the admin user.");
+            } else {
+               int var11 = JOptionPane.showConfirmDialog(var1, "Are you sure you want to delete user '" + var9 + "'?\n\nThis action cannot be undone and will delete:\n- User account\n- All user sessions\n- All user applications\n- All user resumes\n- All user notifications", "Confirm Delete User", 0, 2);
+               if (var11 == 0) {
+                  try {
+                     if (this.dbManager.deleteUser(var8, var9)) {
+                        UIHelper.showSuccessDialog(var1, "User '" + var9 + "' has been deleted successfully.");
+                        var19.setRowCount(0);
+                        List var12 = this.dbManager.getAllUsersWithSessions();
+                        Iterator var13 = var12.iterator();
+
+                        while(var13.hasNext()) {
+                           Object[] var14 = (Object[])var13.next();
+                           String var15 = var14[6] != null ? var14[6].toString() : "N/A";
+                           var19.addRow(new Object[]{var14[0], var14[1], var14[2], var14[3], var14[4], var14[5], var15});
+                        }
+
+                        int var17 = this.dbManager.getActiveUserCount();
+                        var2.removeAll();
+                        var2.add(var3, "West");
+                        JLabel var18 = new JLabel("Active: " + var17);
+                        var18.setFont(AppTheme.FONT_SUBTITLE);
+                        var18.setForeground(new Color(255, 255, 255));
+                        var2.add(var18, "East");
+                        var2.revalidate();
+                        var2.repaint();
+                     } else {
+                        UIHelper.showErrorDialog(var1, "Failed to delete user.");
+                     }
+                  } catch (SQLException var16) {
+                     UIHelper.showErrorDialog(var1, "Error deleting user: " + var16.getMessage());
+                  }
+               }
+
+            }
+         }
+      });
+      JButton var14 = UIHelper.createStyledButton("\ud83d\udce5 Export to CSV", new Color(46, 125, 50));
+      var14.setPreferredSize(new Dimension(150, 35));
+      var14.addActionListener((var3x) -> {
+         this.exportUsersToCSV(var1, var19);
+      });
+      JButton var15 = UIHelper.createStyledButton("Close", AppTheme.PRIMARY_COLOR);
+      var15.setPreferredSize(new Dimension(100, 35));
+      var15.addActionListener((var1x) -> {
+         var1.dispose();
+      });
+      var23.add(var12);
+      var23.add(var13);
+      var23.add(var14);
+      var23.add(var15);
+      var1.add(var23, "South");
+      var1.setVisible(true);
+   }
+
+   private void exportUsersToCSV(JDialog var1, DefaultTableModel var2) {
+      try {
+         String[] var3 = new String[]{"Export Visible Users (Table)", "Export All Users from Database"};
+         int var4 = JOptionPane.showOptionDialog(var1, "What would you like to export?", "Export Options", 0, 3, (Icon)null, var3, var3[0]);
+         boolean var5 = var4 == 1;
+         JFileChooser var6 = new JFileChooser();
+         var6.setDialogTitle("Export Users to CSV");
+         SimpleDateFormat var7 = new SimpleDateFormat("yyyyMMdd_HHmmss");
+         String var8 = var5 ? "all_users_export_" : "users_export_";
+         var6.setSelectedFile(new File(var8 + var7.format(new Date()) + ".csv"));
+         if (var6.showSaveDialog(var1) == 0) {
+            File var9 = var6.getSelectedFile();
+            if (!var9.getName().toLowerCase().endsWith(".csv")) {
+               var9 = new File(var9.getAbsolutePath() + ".csv");
+            }
+
+            FileWriter var10 = new FileWriter(var9, StandardCharsets.UTF_8);
+
+            try {
+               var10.write(65279);
+               String[] var11 = new String[]{"ID", "Username", "Password", "Role", "Status", "Last Login", "Last Logout"};
+               int var12 = 0;
+
+               while(true) {
+                  if (var12 >= var11.length) {
+                     var10.append("\n");
+                     String var15;
+                     if (var5) {
+                        List var20 = this.dbManager.getAllUsersWithSessions();
+                        Iterator var13 = var20.iterator();
+
+                        while(var13.hasNext()) {
+                           Object[] var14 = (Object[])var13.next();
+                           var15 = var14[6] != null ? var14[6].toString() : "N/A";
+                           var10.append(this.escapeCSV(String.valueOf(var14[0]))).append(",");
+                           var10.append(this.escapeCSV(var14[1].toString())).append(",");
+                           var10.append(this.escapeCSV(var14[2].toString())).append(",");
+                           var10.append(this.escapeCSV(var14[3].toString())).append(",");
+                           var10.append(this.escapeCSV(var14[4].toString())).append(",");
+                           var10.append(this.escapeCSV(var14[5].toString())).append(",");
+                           var10.append(this.escapeCSV(var15));
+                           var10.append("\n");
+                        }
+                     } else {
+                        for(var12 = 0; var12 < var2.getRowCount(); ++var12) {
+                           for(int var21 = 0; var21 < var2.getColumnCount(); ++var21) {
+                              Object var23 = var2.getValueAt(var12, var21);
+                              var15 = var23 != null ? var23.toString() : "";
+                              var10.append(this.escapeCSV(var15));
+                              if (var21 < var2.getColumnCount() - 1) {
+                                 var10.append(",");
+                              }
+                           }
+
+                           var10.append("\n");
+                        }
+                     }
+
+                     String var22 = var5 ? "All users exported successfully!\nTotal: " + this.dbManager.getAllUsersWithSessions().size() + " users\n" : "Visible users exported successfully!\nTotal: " + var2.getRowCount() + " users\n";
+                     UIHelper.showSuccessDialog(var1, var22 + "Saved to:\n" + var9.getAbsolutePath());
+                     break;
+                  }
+
+                  var10.append(this.escapeCSV(var11[var12]));
+                  if (var12 < var11.length - 1) {
+                     var10.append(",");
+                  }
+
+                  ++var12;
+               }
+            } catch (Throwable var17) {
+               try {
+                  var10.close();
+               } catch (Throwable var16) {
+                  var17.addSuppressed(var16);
+               }
+
+               throw var17;
+            }
+
+            var10.close();
+         }
+      } catch (IOException var18) {
+         UIHelper.showErrorDialog(var1, "Error exporting to CSV: " + var18.getMessage());
+      } catch (SQLException var19) {
+         UIHelper.showErrorDialog(var1, "Error loading users from database: " + var19.getMessage());
+      }
+
+   }
+
+   private String escapeCSV(String var1) {
+      if (var1 == null) {
+         return "\"\"";
+      } else {
+         String var2 = var1.replace("\ud83d\udfe2 ", "").replace("⚫ ", "").replace("\ud83d\udd10 ", "").replace("\ud83d\udc64 ", "").replace("\ud83d\udd50 ", "");
+         String var3 = var2.replace(",", ";");
+         if (!var3.contains("\"") && !var3.contains("\n") && !var3.contains("\r")) {
+            return !var3.contains(";") && !var3.trim().isEmpty() ? var3 : "\"" + var3 + "\"";
+         } else {
+            var3 = var3.replace("\"", "\"\"");
+            return "\"" + var3 + "\"";
+         }
+      }
+   }
+}
