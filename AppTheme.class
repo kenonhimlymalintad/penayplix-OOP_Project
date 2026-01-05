@@ -1,0 +1,60 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.awt.Color;
+import java.awt.Font;
+
+public class AppTheme {
+   public static final Color BG_COLOR = new Color(245, 247, 250);
+   public static final Color PRIMARY_COLOR = new Color(33, 150, 243);
+   public static final Color PRIMARY_DARK = new Color(25, 118, 210);
+   public static final Color BORDER_COLOR = new Color(220, 220, 220);
+   public static final Color CARD_COLOR;
+   public static final Color TEXT_PRIMARY;
+   public static final Color TEXT_SECONDARY;
+   public static final Color ACCENT_COLOR;
+   public static final Color WARNING_COLOR;
+   public static final Color DANGER_COLOR;
+   public static final Color DASHBOARD_SIDEBAR;
+   public static final Color DASHBOARD_BG;
+   public static final Color DASHBOARD_CARD_DARK;
+   public static final Color DASHBOARD_TEXT_LIGHT;
+   public static final Color DASHBOARD_SUCCESS;
+   public static final Color DASHBOARD_DANGER;
+   public static final Font FONT_EMOJI;
+   public static final Font FONT_EMOJI_SMALL;
+   public static final Font FONT_TITLE;
+   public static final Font FONT_SUBTITLE;
+   public static final Font FONT_HEADER;
+   public static final Font FONT_LABEL;
+   public static final Font FONT_TABLE;
+   public static final Font FONT_TABLE_HEADER;
+   public static final Font FONT_DIALOG_HEADER;
+   public static final String[] JOB_COLUMNS;
+
+   public AppTheme() {
+   }
+
+   static {
+      CARD_COLOR = Color.WHITE;
+      TEXT_PRIMARY = new Color(44, 62, 80);
+      TEXT_SECONDARY = new Color(127, 140, 141);
+      ACCENT_COLOR = new Color(255, 235, 59);
+      WARNING_COLOR = new Color(241, 196, 15);
+      DANGER_COLOR = new Color(231, 76, 60);
+      DASHBOARD_SIDEBAR = new Color(26, 26, 26);
+      DASHBOARD_BG = new Color(242, 242, 242);
+      DASHBOARD_CARD_DARK = new Color(26, 26, 26);
+      DASHBOARD_TEXT_LIGHT = new Color(255, 255, 255);
+      DASHBOARD_SUCCESS = new Color(46, 204, 113);
+      DASHBOARD_DANGER = new Color(231, 76, 60);
+      FONT_EMOJI = new Font("Segoe UI Emoji", 0, 48);
+      FONT_EMOJI_SMALL = new Font("Segoe UI Emoji", 0, 36);
+      FONT_TITLE = new Font("Segoe UI", 1, 24);
+      FONT_SUBTITLE = new Font("Segoe UI", 0, 14);
+      FONT_HEADER = new Font("Segoe UI", 1, 20);
+      FONT_LABEL = new Font("Segoe UI", 1, 13);
+      FONT_TABLE = new Font("Segoe UI", 0, 13);
+      FONT_TABLE_HEADER = new Font("Segoe UI", 1, 13);
+      FONT_DIALOG_HEADER = new Font("Segoe UI", 1, 18);
+      JOB_COLUMNS = new String[]{"ID", "Title", "Company", "Location", "Salary", "Description"};
+   }
+}
