@@ -1,0 +1,107 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+
+public class UIHelper {
+   public UIHelper() {
+   }
+
+   public static void showErrorDialog(Component var0, String var1) {
+      JOptionPane.showMessageDialog(var0, var1, "Error", 0);
+   }
+
+   public static void showSuccessDialog(Component var0, String var1) {
+      JOptionPane.showMessageDialog(var0, var1, "Success", 1);
+   }
+
+   public static void showWarningDialog(Component var0, String var1) {
+      JOptionPane.showMessageDialog(var0, var1, "Warning", 2);
+   }
+
+   public static int showConfirmDialog(Component var0, String var1, String var2) {
+      return JOptionPane.showConfirmDialog(var0, var1, var2, 0, 3);
+   }
+
+   public static JPanel createCardPanel(int var0) {
+      JPanel var1 = new JPanel();
+      var1.setLayout(new BoxLayout(var1, 1));
+      var1.setBackground(AppTheme.CARD_COLOR);
+      var1.setBorder(BorderFactory.createCompoundBorder(new LineBorder(AppTheme.BORDER_COLOR, 1), new EmptyBorder(var0, var0, var0, var0)));
+      return var1;
+   }
+
+   public static JLabel createStyledLabel(String var0) {
+      JLabel var1 = new JLabel(var0);
+      var1.setFont(AppTheme.FONT_LABEL);
+      var1.setForeground(AppTheme.TEXT_PRIMARY);
+      return var1;
+   }
+
+   public static JLabel createFormLabel(String var0) {
+      JLabel var1 = new JLabel(var0);
+      var1.setFont(AppTheme.FONT_LABEL);
+      var1.setForeground(AppTheme.TEXT_SECONDARY);
+      var1.setAlignmentX(0.0F);
+      return var1;
+   }
+
+   public static JTextField createStyledTextField(int var0) {
+      JTextField var1 = new JTextField(var0);
+      var1.setFont(AppTheme.FONT_SUBTITLE);
+      var1.setBorder(BorderFactory.createCompoundBorder(new LineBorder(AppTheme.BORDER_COLOR, 1), new EmptyBorder(8, 12, 8, 12)));
+      return var1;
+   }
+
+   public static JPasswordField createStyledPasswordField(int var0) {
+      JPasswordField var1 = new JPasswordField(var0);
+      var1.setFont(AppTheme.FONT_SUBTITLE);
+      var1.setEchoChar('●');
+      var1.setBorder(BorderFactory.createCompoundBorder(new LineBorder(AppTheme.BORDER_COLOR, 1), new EmptyBorder(8, 12, 8, 12)));
+      return var1;
+   }
+
+   public static JTextArea createStyledTextArea(int var0, int var1) {
+      JTextArea var2 = new JTextArea(var0, var1);
+      var2.setFont(AppTheme.FONT_SUBTITLE);
+      var2.setLineWrap(true);
+      var2.setWrapStyleWord(true);
+      var2.setBorder(BorderFactory.createCompoundBorder(new LineBorder(AppTheme.BORDER_COLOR, 1), new EmptyBorder(8, 12, 8, 12)));
+      return var2;
+   }
+
+   public static JButton createStyledButton(String var0, final Color var1) {
+      final JButton var2 = new JButton(var0);
+      var2.setFont(new Font("Segoe UI", 1, 13));
+      var2.setForeground(Color.WHITE);
+      var2.setBackground(var1);
+      var2.setFocusPainted(false);
+      var2.setBorderPainted(false);
+      var2.setCursor(new Cursor(12));
+      final Color var3 = var1.darker();
+      var2.addMouseListener(new MouseAdapter() {
+         public void mouseEntered(MouseEvent var1x) {
+            var2.setBackground(var3);
+         }
+
+         public void mouseExited(MouseEvent var1x) {
+            var2.setBackground(var1);
+         }
+      });
+      return var2;
+   }
+}
