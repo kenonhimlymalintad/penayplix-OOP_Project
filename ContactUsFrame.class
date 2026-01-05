@@ -1,0 +1,294 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.sql.SQLException;
+import java.util.Iterator;
+import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
+
+public class ContactUsFrame extends JFrame {
+   private DatabaseManager dbManager;
+   private String currentUser;
+   private JTextField tfSubject;
+   private JTextField tfEmail;
+   private JTextField tfPhone;
+   private JTextArea taMessage;
+   private JButton btnSend;
+   private JButton btnViewMessages;
+
+   public ContactUsFrame(JobListingApp var1, DatabaseManager var2, String var3) {
+      super("Contact Us");
+      this.dbManager = var2;
+      this.currentUser = var3;
+      this.setDefaultCloseOperation(2);
+      this.setSize(600, 650);
+      this.setLocationRelativeTo(var1);
+      this.getContentPane().setBackground(AppTheme.BG_COLOR);
+      this.initializeComponents();
+      this.setVisible(true);
+   }
+
+   private void initializeComponents() {
+      this.setLayout(new BorderLayout(10, 10));
+      this.add(this.createHeaderPanel(), "North");
+      this.add(this.createContentPanel(), "Center");
+      this.add(this.createFooterPanel(), "South");
+   }
+
+   private JPanel createHeaderPanel() {
+      JPanel var1 = new JPanel(new BorderLayout());
+      var1.setBackground(AppTheme.PRIMARY_COLOR);
+      var1.setPreferredSize(new Dimension(0, 60));
+      var1.setBorder(new EmptyBorder(0, 20, 0, 20));
+      JLabel var2 = new JLabel("\ud83d\udce7 Contact Us");
+      var2.setFont(AppTheme.FONT_HEADER);
+      var2.setForeground(Color.WHITE);
+      var1.add(var2, "West");
+      JButton var3 = UIHelper.createStyledButton("✖ Close", AppTheme.DANGER_COLOR);
+      var3.setPreferredSize(new Dimension(90, 32));
+      var3.addActionListener((var1x) -> {
+         this.dispose();
+      });
+      JPanel var4 = new JPanel(new FlowLayout(2, 0, 14));
+      var4.setOpaque(false);
+      var4.add(var3);
+      var1.add(var4, "East");
+      return var1;
+   }
+
+   private JPanel createContentPanel() {
+      JPanel var1 = new JPanel(new BorderLayout());
+      var1.setOpaque(false);
+      var1.setBorder(new EmptyBorder(25, 30, 25, 30));
+      JPanel var2 = UIHelper.createCardPanel(25);
+      var2.setLayout(new BoxLayout(var2, 1));
+      var2.setBorder(new EmptyBorder(30, 40, 30, 40));
+      JLabel var3 = new JLabel("<html><center>Have a question or concern?<br>Send us a message and we'll get back to you soon!</center></html>");
+      var3.setFont(AppTheme.FONT_SUBTITLE);
+      var3.setForeground(AppTheme.TEXT_SECONDARY);
+      var3.setAlignmentX(0.5F);
+      var2.add(var3);
+      var2.add(Box.createVerticalStrut(25));
+      var2.add(UIHelper.createFormLabel("Subject *"));
+      this.tfSubject = UIHelper.createStyledTextField(30);
+      this.tfSubject.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      this.tfSubject.setAlignmentX(0.0F);
+      var2.add(this.tfSubject);
+      var2.add(Box.createVerticalStrut(15));
+      var2.add(UIHelper.createFormLabel("Email *"));
+      this.tfEmail = UIHelper.createStyledTextField(30);
+      this.tfEmail.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      this.tfEmail.setAlignmentX(0.0F);
+      var2.add(this.tfEmail);
+      var2.add(Box.createVerticalStrut(15));
+      var2.add(UIHelper.createFormLabel("Phone (Optional)"));
+      this.tfPhone = UIHelper.createStyledTextField(30);
+      this.tfPhone.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      this.tfPhone.setAlignmentX(0.0F);
+      var2.add(this.tfPhone);
+      var2.add(Box.createVerticalStrut(15));
+      var2.add(UIHelper.createFormLabel("Message *"));
+      this.taMessage = UIHelper.createStyledTextArea(8, 30);
+      this.taMessage.setLineWrap(true);
+      this.taMessage.setWrapStyleWord(true);
+      JScrollPane var4 = new JScrollPane(this.taMessage);
+      var4.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
+      var4.setAlignmentX(0.0F);
+      var4.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      var2.add(var4);
+      JScrollPane var5 = new JScrollPane(var2);
+      var5.setBorder((Border)null);
+      var5.getVerticalScrollBar().setUnitIncrement(16);
+      var1.add(var5, "Center");
+      return var1;
+   }
+
+   private JPanel createFooterPanel() {
+      JPanel var1 = new JPanel(new FlowLayout(1, 15, 15));
+      var1.setBackground(AppTheme.BG_COLOR);
+      var1.setBorder(new EmptyBorder(10, 20, 15, 20));
+      this.btnViewMessages = UIHelper.createStyledButton("\ud83d\udccb View My Messages", AppTheme.PRIMARY_COLOR);
+      this.btnViewMessages.setPreferredSize(new Dimension(180, 40));
+      this.btnViewMessages.addActionListener((var1x) -> {
+         this.showUserMessages();
+      });
+      var1.add(this.btnViewMessages);
+      this.btnSend = UIHelper.createStyledButton("\ud83d\udce4 Send Message", AppTheme.ACCENT_COLOR);
+      this.btnSend.setPreferredSize(new Dimension(150, 40));
+      this.btnSend.setFont(new Font("Segoe UI", 1, 14));
+      this.btnSend.addActionListener((var1x) -> {
+         this.sendMessage();
+      });
+      var1.add(this.btnSend);
+      return var1;
+   }
+
+   private void sendMessage() {
+      String var1 = this.tfSubject.getText().trim();
+      String var2 = this.tfEmail.getText().trim();
+      String var3 = this.tfPhone.getText().trim();
+      String var4 = this.taMessage.getText().trim();
+      if (var1.isEmpty()) {
+         UIHelper.showWarningDialog(this, "Please enter a subject.");
+         this.tfSubject.requestFocus();
+      } else if (var2.isEmpty()) {
+         UIHelper.showWarningDialog(this, "Please enter your email address.");
+         this.tfEmail.requestFocus();
+      } else if (var2.contains("@") && var2.contains(".")) {
+         if (var4.isEmpty()) {
+            UIHelper.showWarningDialog(this, "Please enter your message.");
+            this.taMessage.requestFocus();
+         } else if (var4.length() < 10) {
+            UIHelper.showWarningDialog(this, "Message is too short. Please provide more details.");
+            this.taMessage.requestFocus();
+         } else {
+            try {
+               if (this.dbManager.addContactMessage(this.currentUser, var1, var4, var2, var3)) {
+                  UIHelper.showSuccessDialog(this, "Message sent successfully!\nWe'll get back to you soon.");
+                  this.tfSubject.setText("");
+                  this.tfEmail.setText("");
+                  this.tfPhone.setText("");
+                  this.taMessage.setText("");
+               } else {
+                  UIHelper.showErrorDialog(this, "Failed to send message. Please try again.");
+               }
+            } catch (SQLException var6) {
+               UIHelper.showErrorDialog(this, "Error sending message: " + var6.getMessage());
+            }
+
+         }
+      } else {
+         UIHelper.showWarningDialog(this, "Please enter a valid email address.");
+         this.tfEmail.requestFocus();
+      }
+   }
+
+   private void showUserMessages() {
+      try {
+         List var1 = this.dbManager.getUserContactMessages(this.currentUser);
+         if (var1.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "You haven't sent any messages yet.", "Info", 1);
+            return;
+         }
+
+         JDialog var2 = new JDialog(this, "My Messages", true);
+         var2.setSize(700, 500);
+         var2.setLocationRelativeTo(this);
+         var2.getContentPane().setBackground(AppTheme.BG_COLOR);
+         var2.setLayout(new BorderLayout(10, 10));
+         JPanel var3 = new JPanel(new BorderLayout());
+         var3.setBackground(AppTheme.PRIMARY_COLOR);
+         var3.setBorder(new EmptyBorder(15, 20, 15, 20));
+         JLabel var4 = new JLabel("\ud83d\udccb My Contact Messages");
+         var4.setFont(AppTheme.FONT_HEADER);
+         var4.setForeground(Color.WHITE);
+         var3.add(var4, "West");
+         var2.add(var3, "North");
+         JPanel var5 = new JPanel(new BorderLayout());
+         var5.setOpaque(false);
+         var5.setBorder(new EmptyBorder(20, 20, 20, 20));
+         DefaultListModel var6 = new DefaultListModel();
+         JList var7 = new JList(var6);
+         var7.setFont(AppTheme.FONT_SUBTITLE);
+         var7.setSelectionMode(0);
+         var7.setCellRenderer(new DefaultListCellRenderer() {
+            public Component getListCellRendererComponent(JList<?> var1, Object var2, int var3, boolean var4, boolean var5) {
+               JLabel var6 = (JLabel)super.getListCellRendererComponent(var1, var2, var3, var4, var5);
+               var6.setBorder(new EmptyBorder(8, 10, 8, 10));
+               return var6;
+            }
+         });
+         Iterator var8 = var1.iterator();
+
+         while(var8.hasNext()) {
+            Object[] var9 = (Object[])var8.next();
+            String var10 = (String)var9[1];
+            String var11 = (String)var9[3];
+            String var12 = (String)var9[5];
+            String var13 = "New".equals(var11) ? "\ud83c\udd95" : "✅";
+            String var14 = String.format("%s [%s] %s - %s", var13, var11, var10, var12);
+            var6.addElement(var14);
+         }
+
+         JScrollPane var16 = new JScrollPane(var7);
+         var16.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+         var5.add(var16, "Center");
+         JPanel var17 = UIHelper.createCardPanel(15);
+         var17.setLayout(new BoxLayout(var17, 1));
+         var17.setBorder(new EmptyBorder(15, 15, 15, 15));
+         var17.setPreferredSize(new Dimension(0, 150));
+         JLabel var18 = new JLabel("Message Details:");
+         var18.setFont(AppTheme.FONT_LABEL);
+         var18.setForeground(AppTheme.TEXT_PRIMARY);
+         var17.add(var18);
+         var17.add(Box.createVerticalStrut(10));
+         JTextArea var19 = new JTextArea();
+         var19.setFont(AppTheme.FONT_SUBTITLE);
+         var19.setEditable(false);
+         var19.setOpaque(false);
+         var19.setLineWrap(true);
+         var19.setWrapStyleWord(true);
+         var19.setForeground(AppTheme.TEXT_SECONDARY);
+         var7.addListSelectionListener((var3x) -> {
+            int var4 = var7.getSelectedIndex();
+            if (var4 >= 0 && var4 < var1.size()) {
+               Object[] var5 = (Object[])var1.get(var4);
+               String var6 = (String)var5[1];
+               String var7x = (String)var5[2];
+               String var8 = (String)var5[3];
+               String var9 = (String)var5[4];
+               String var10 = (String)var5[5];
+               StringBuilder var11 = new StringBuilder();
+               var11.append("Subject: ").append(var6).append("\n\n");
+               var11.append("Your Message:\n").append(var7x).append("\n\n");
+               var11.append("Status: ").append(var8).append("\n");
+               var11.append("Sent: ").append(var10);
+               if (var9 != null && !var9.trim().isEmpty()) {
+                  var11.append("\n\n").append("Admin Response:\n").append(var9);
+               }
+
+               var19.setText(var11.toString());
+            }
+
+         });
+         JScrollPane var20 = new JScrollPane(var19);
+         var20.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+         var20.setPreferredSize(new Dimension(0, 100));
+         var17.add(var20);
+         var5.add(var17, "South");
+         var2.add(var5, "Center");
+         JPanel var21 = new JPanel(new FlowLayout(1));
+         var21.setOpaque(false);
+         JButton var22 = UIHelper.createStyledButton("Close", AppTheme.PRIMARY_COLOR);
+         var22.addActionListener((var1x) -> {
+            var2.dispose();
+         });
+         var21.add(var22);
+         var2.add(var21, "South");
+         var2.setVisible(true);
+      } catch (SQLException var15) {
+         UIHelper.showErrorDialog(this, "Error loading messages: " + var15.getMessage());
+      }
+
+   }
+}
