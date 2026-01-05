@@ -1,0 +1,674 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+import javax.swing.RowFilter;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableRowSorter;
+
+public class JobListFrame extends JFrame {
+   private DefaultTableModel tableModel;
+   private JTable table;
+   private JTextField tfSearch;
+   private JButton btnDelete;
+   private TableRowSorter<DefaultTableModel> sorter;
+   private JLabel jobCount;
+   private DatabaseManager dbManager;
+   private DialogManager dialogManager;
+   private String currentUser;
+   private String currentUserRole;
+   private JobListingApp parentApp;
+
+   public JobListFrame(JobListingApp var1, DatabaseManager var2, DialogManager var3, String var4, String var5) {
+      super("Job Listings");
+      this.parentApp = var1;
+      this.dbManager = var2;
+      this.dialogManager = var3;
+      this.currentUser = var4;
+      this.currentUserRole = var5;
+      this.setDefaultCloseOperation(2);
+      this.setSize(1200, 700);
+      this.setLocationRelativeTo(var1);
+      this.getContentPane().setBackground(AppTheme.BG_COLOR);
+      this.initializeComponents();
+      this.loadJobsFromDatabase();
+      this.setVisible(true);
+   }
+
+   private void initializeComponents() {
+      this.setLayout(new BorderLayout());
+      this.add(this.createHeaderPanel(), "North");
+      this.add(this.createContentPanel(), "Center");
+      this.add(this.createFooterPanel(), "South");
+   }
+
+   private JPanel createHeaderPanel() {
+      JPanel var1 = new JPanel(new BorderLayout());
+      var1.setBackground(AppTheme.PRIMARY_COLOR);
+      var1.setPreferredSize(new Dimension(0, 60));
+      var1.setBorder(new EmptyBorder(0, 20, 0, 20));
+      JLabel var2 = new JLabel("\ud83d\udccb Job Listings");
+      var2.setFont(AppTheme.FONT_HEADER);
+      var2.setForeground(Color.WHITE);
+      var1.add(var2, "West");
+      JButton var3 = UIHelper.createStyledButton("\ud83d\udd04 Refresh", AppTheme.ACCENT_COLOR);
+      var3.setPreferredSize(new Dimension(100, 32));
+      var3.addActionListener((var1x) -> {
+         this.loadJobsFromDatabase();
+      });
+      JButton var4 = UIHelper.createStyledButton("✖ Close", AppTheme.DANGER_COLOR);
+      var4.setPreferredSize(new Dimension(90, 32));
+      var4.addActionListener((var1x) -> {
+         this.dispose();
+      });
+      JPanel var5 = new JPanel(new FlowLayout(2, 10, 14));
+      var5.setOpaque(false);
+      var5.add(var3);
+      var5.add(var4);
+      var1.add(var5, "East");
+      return var1;
+   }
+
+   private JPanel createContentPanel() {
+      JPanel var1 = new JPanel(new BorderLayout(15, 15));
+      var1.setOpaque(false);
+      var1.setBorder(new EmptyBorder(20, 25, 20, 25));
+      JPanel var2 = new JPanel(new BorderLayout(10, 0));
+      var2.setOpaque(false);
+      var2.setBorder(new EmptyBorder(0, 0, 15, 0));
+      JLabel var3 = new JLabel("\ud83d\udd0d Search Jobs:");
+      var3.setFont(AppTheme.FONT_LABEL);
+      var3.setForeground(AppTheme.TEXT_PRIMARY);
+      var2.add(var3, "West");
+      this.tfSearch = UIHelper.createStyledTextField(30);
+      this.tfSearch.addKeyListener(new KeyAdapter() {
+         public void keyReleased(KeyEvent var1) {
+            JobListFrame.this.filterTable(JobListFrame.this.tfSearch.getText());
+         }
+      });
+      var2.add(this.tfSearch, "Center");
+      this.jobCount = new JLabel("Total Jobs: 0");
+      this.jobCount.setFont(AppTheme.FONT_SUBTITLE);
+      this.jobCount.setForeground(AppTheme.TEXT_SECONDARY);
+      var2.add(this.jobCount, "East");
+      var1.add(var2, "North");
+      this.tableModel = new DefaultTableModel(AppTheme.JOB_COLUMNS, 0) {
+         public boolean isCellEditable(int var1, int var2) {
+            return false;
+         }
+      };
+      this.table = new JTable(this.tableModel);
+      this.table.setFont(AppTheme.FONT_TABLE);
+      this.table.setRowHeight(40);
+      this.table.setShowGrid(true);
+      this.table.setGridColor(AppTheme.BORDER_COLOR);
+      this.table.setSelectionBackground(new Color(52, 152, 219, 80));
+      this.table.setSelectionMode(0);
+      this.table.setFillsViewportHeight(true);
+      JTableHeader var4 = this.table.getTableHeader();
+      var4.setFont(AppTheme.FONT_TABLE_HEADER);
+      var4.setBackground(AppTheme.PRIMARY_COLOR);
+      var4.setForeground(Color.WHITE);
+      var4.setPreferredSize(new Dimension(0, 40));
+      var4.setDefaultRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            var7.setBackground(AppTheme.PRIMARY_COLOR);
+            var7.setForeground(Color.WHITE);
+            var7.setFont(AppTheme.FONT_TABLE_HEADER);
+            var7.setHorizontalAlignment(0);
+            var7.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 1, AppTheme.PRIMARY_DARK));
+            var7.setOpaque(true);
+            return var7;
+         }
+      });
+      this.table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            var7.setText(String.valueOf(var5 + 1));
+            var7.setBackground(var3 ? new Color(52, 152, 219, 100) : (var5 % 2 == 0 ? Color.WHITE : new Color(240, 248, 255)));
+            var7.setForeground(Color.BLACK);
+            var7.setFont(AppTheme.FONT_TABLE);
+            var7.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+            var7.setHorizontalAlignment(0);
+            var7.setOpaque(true);
+            return var7;
+         }
+      });
+      this.table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+         public Component getTableCellRendererComponent(JTable var1, Object var2, boolean var3, boolean var4, int var5, int var6) {
+            JLabel var7 = (JLabel)super.getTableCellRendererComponent(var1, var2, var3, var4, var5, var6);
+            var7.setBackground(var3 ? new Color(52, 152, 219, 100) : (var5 % 2 == 0 ? Color.WHITE : new Color(240, 248, 255)));
+            var7.setForeground(Color.BLACK);
+            var7.setFont(AppTheme.FONT_TABLE);
+            var7.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+            var7.setHorizontalAlignment(2);
+            var7.setOpaque(true);
+            return var7;
+         }
+      });
+      this.table.getColumnModel().getColumn(0).setPreferredWidth(50);
+      this.table.getColumnModel().getColumn(1).setPreferredWidth(150);
+      this.table.getColumnModel().getColumn(2).setPreferredWidth(130);
+      this.table.getColumnModel().getColumn(3).setPreferredWidth(120);
+      this.table.getColumnModel().getColumn(4).setPreferredWidth(100);
+      this.table.getColumnModel().getColumn(5).setPreferredWidth(200);
+      this.sorter = new TableRowSorter(this.tableModel);
+      this.table.setRowSorter(this.sorter);
+      this.setupContextMenu();
+      this.setupKeyboardShortcuts();
+      JScrollPane var5 = new JScrollPane(this.table);
+      var5.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+      var1.add(var5, "Center");
+      this.tableModel.addTableModelListener((var1x) -> {
+         this.jobCount.setText("Total Jobs: " + this.tableModel.getRowCount());
+      });
+      return var1;
+   }
+
+   private JPanel createFooterPanel() {
+      JPanel var1 = new JPanel(new FlowLayout(1, 10, 10));
+      var1.setBackground(AppTheme.BG_COLOR);
+      var1.setBorder(new EmptyBorder(10, 20, 10, 20));
+      JButton var2;
+      if ("Admin".equals(this.currentUserRole)) {
+         var2 = UIHelper.createStyledButton("➕ Add New Job", AppTheme.ACCENT_COLOR);
+         var2.setPreferredSize(new Dimension(150, 35));
+         var2.addActionListener((var1x) -> {
+            this.showAddJobWindow();
+         });
+         var1.add(var2);
+      }
+
+      this.btnDelete = UIHelper.createStyledButton("\ud83d\uddd1️ Delete Selected Job", AppTheme.DANGER_COLOR);
+      this.btnDelete.setPreferredSize(new Dimension(180, 35));
+      this.btnDelete.addActionListener((var1x) -> {
+         this.deleteSelectedJob();
+      });
+      if ("Admin".equals(this.currentUserRole)) {
+         var1.add(this.btnDelete);
+      }
+
+      if ("Admin".equals(this.currentUserRole)) {
+         var2 = UIHelper.createStyledButton("\ud83d\udce5 Export to CSV", new Color(46, 125, 50));
+         var2.setPreferredSize(new Dimension(150, 35));
+         var2.addActionListener((var1x) -> {
+            this.exportToCSV();
+         });
+         var1.add(var2);
+      }
+
+      if (!"Admin".equals(this.currentUserRole)) {
+         var2 = UIHelper.createStyledButton("\ud83d\udcdd Apply with Resume", AppTheme.PRIMARY_COLOR);
+         var2.setPreferredSize(new Dimension(180, 35));
+         var2.addActionListener((var1x) -> {
+            this.applyWithResume();
+         });
+         var1.add(var2);
+      }
+
+      return var1;
+   }
+
+   public void loadJobsFromDatabase() {
+      try {
+         this.tableModel.setRowCount(0);
+         List var1 = this.dbManager.getAllJobs();
+         Iterator var2 = var1.iterator();
+
+         while(var2.hasNext()) {
+            String[] var3 = (String[])var2.next();
+            this.tableModel.addRow(var3);
+         }
+
+         System.out.println("✓ Loaded " + var1.size() + " jobs");
+      } catch (SQLException var4) {
+         UIHelper.showErrorDialog(this, "Error loading jobs: " + var4.getMessage());
+      }
+
+   }
+
+   private void filterTable(String var1) {
+      this.sorter.setRowFilter(var1.trim().isEmpty() ? null : RowFilter.regexFilter("(?i)" + var1, new int[0]));
+   }
+
+   private void deleteSelectedJob() {
+      int var1 = this.table.getSelectedRow();
+      if (var1 == -1) {
+         UIHelper.showWarningDialog(this, "Please select a job.");
+      } else {
+         if (UIHelper.showConfirmDialog(this, "Delete this job?", "Confirm") == 0) {
+            int var2 = this.table.convertRowIndexToModel(var1);
+            int var3 = Integer.parseInt(String.valueOf(this.tableModel.getValueAt(var2, 0)));
+
+            try {
+               if (this.dbManager.deleteJob(var3)) {
+                  this.tableModel.removeRow(var2);
+                  this.table.clearSelection();
+                  UIHelper.showSuccessDialog(this, "Job deleted!");
+                  this.loadJobsFromDatabase();
+                  if (this.parentApp != null) {
+                     this.parentApp.refreshJobList();
+                  }
+               }
+            } catch (SQLException var5) {
+               UIHelper.showErrorDialog(this, "Error: " + var5.getMessage());
+            }
+         }
+
+      }
+   }
+
+   private void exportToCSV() {
+      try {
+         JFileChooser var1 = new JFileChooser();
+         var1.setDialogTitle("Export Jobs to CSV");
+         SimpleDateFormat var2 = new SimpleDateFormat("yyyyMMdd_HHmmss");
+         String var10003 = var2.format(new Date());
+         var1.setSelectedFile(new File("jobs_export_" + var10003 + ".csv"));
+         if (var1.showSaveDialog(this) == 0) {
+            File var3 = var1.getSelectedFile();
+            if (!var3.getName().toLowerCase().endsWith(".csv")) {
+               var3 = new File(var3.getAbsolutePath() + ".csv");
+            }
+
+            FileWriter var4 = new FileWriter(var3);
+
+            try {
+               int var5;
+               for(var5 = 0; var5 < this.tableModel.getColumnCount(); ++var5) {
+                  var4.append(this.tableModel.getColumnName(var5));
+                  if (var5 < this.tableModel.getColumnCount() - 1) {
+                     var4.append(",");
+                  }
+               }
+
+               var4.append("\n");
+
+               for(var5 = 0; var5 < this.tableModel.getRowCount(); ++var5) {
+                  for(int var6 = 0; var6 < this.tableModel.getColumnCount(); ++var6) {
+                     Object var7 = this.tableModel.getValueAt(var5, var6);
+                     String var8 = var7 != null ? var7.toString().replace(",", ";") : "";
+                     var4.append("\"").append(var8).append("\"");
+                     if (var6 < this.tableModel.getColumnCount() - 1) {
+                        var4.append(",");
+                     }
+                  }
+
+                  var4.append("\n");
+               }
+
+               UIHelper.showSuccessDialog(this, "Jobs exported successfully to:\n" + var3.getAbsolutePath());
+            } catch (Throwable var10) {
+               try {
+                  var4.close();
+               } catch (Throwable var9) {
+                  var10.addSuppressed(var9);
+               }
+
+               throw var10;
+            }
+
+            var4.close();
+         }
+      } catch (IOException var11) {
+         UIHelper.showErrorDialog(this, "Error exporting to CSV: " + var11.getMessage());
+      }
+
+   }
+
+   private void setupKeyboardShortcuts() {
+      this.getRootPane().getInputMap(2).put(KeyStroke.getKeyStroke(70, 128), "focusSearch");
+      this.getRootPane().getActionMap().put("focusSearch", new AbstractAction() {
+         public void actionPerformed(ActionEvent var1) {
+            JobListFrame.this.tfSearch.requestFocus();
+            JobListFrame.this.tfSearch.selectAll();
+         }
+      });
+      if ("Admin".equals(this.currentUserRole)) {
+         this.table.getInputMap(0).put(KeyStroke.getKeyStroke(127, 0), "deleteJob");
+         this.table.getActionMap().put("deleteJob", new AbstractAction() {
+            public void actionPerformed(ActionEvent var1) {
+               if (JobListFrame.this.btnDelete != null) {
+                  JobListFrame.this.btnDelete.doClick();
+               }
+
+            }
+         });
+      }
+
+      this.tfSearch.getInputMap().put(KeyStroke.getKeyStroke(27, 0), "clearSearch");
+      this.tfSearch.getActionMap().put("clearSearch", new AbstractAction() {
+         public void actionPerformed(ActionEvent var1) {
+            JobListFrame.this.tfSearch.setText("");
+            JobListFrame.this.filterTable("");
+         }
+      });
+   }
+
+   private void setupContextMenu() {
+      final JPopupMenu var1 = new JPopupMenu();
+      JMenuItem var2 = new JMenuItem("\ud83d\udc41️ View Details");
+      var2.addActionListener((var1x) -> {
+         this.showJobDetailsDialog();
+      });
+      var1.add(var2);
+      JMenuItem var3;
+      if ("Admin".equals(this.currentUserRole)) {
+         var1.addSeparator();
+         var3 = new JMenuItem("\ud83d\uddd1️ Delete");
+         var3.addActionListener((var1x) -> {
+            this.deleteSelectedJob();
+         });
+         var1.add(var3);
+      }
+
+      if (!"Admin".equals(this.currentUserRole)) {
+         var1.addSeparator();
+         var3 = new JMenuItem("\ud83d\udcdd Apply for Job");
+         var3.addActionListener((var1x) -> {
+            int var2 = this.table.getSelectedRow();
+            if (var2 >= 0 && this.dialogManager != null) {
+               int var3 = this.table.convertRowIndexToModel(var2);
+               String var4 = String.valueOf(this.tableModel.getValueAt(var3, 1));
+               String var5 = String.valueOf(this.tableModel.getValueAt(var3, 2));
+               this.dialogManager.showApplyJobDialog(var4, var5);
+            }
+
+         });
+         var1.add(var3);
+      }
+
+      if ("Admin".equals(this.currentUserRole)) {
+         var1.addSeparator();
+         var3 = new JMenuItem("\ud83d\udce5 Export to CSV");
+         var3.addActionListener((var1x) -> {
+            this.exportToCSV();
+         });
+         var1.add(var3);
+      }
+
+      this.table.addMouseListener(new MouseAdapter() {
+         public void mouseClicked(MouseEvent var1x) {
+            if (var1x.getClickCount() == 2) {
+               JobListFrame.this.showJobDetailsDialog();
+            }
+
+         }
+
+         public void mousePressed(MouseEvent var1x) {
+            if (var1x.isPopupTrigger()) {
+               this.showContextMenu(var1x);
+            }
+
+         }
+
+         public void mouseReleased(MouseEvent var1x) {
+            if (var1x.isPopupTrigger()) {
+               this.showContextMenu(var1x);
+            }
+
+         }
+
+         private void showContextMenu(MouseEvent var1x) {
+            int var2 = JobListFrame.this.table.rowAtPoint(var1x.getPoint());
+            if (var2 >= 0) {
+               JobListFrame.this.table.setRowSelectionInterval(var2, var2);
+               var1.show(JobListFrame.this.table, var1x.getX(), var1x.getY());
+            }
+
+         }
+      });
+   }
+
+   private void showJobDetailsDialog() {
+      int var1 = this.table.getSelectedRow();
+      if (var1 == -1) {
+         UIHelper.showWarningDialog(this, "Please select a job to view details.");
+      } else {
+         int var2 = this.table.convertRowIndexToModel(var1);
+         String var3 = String.valueOf(this.tableModel.getValueAt(var2, 0));
+         String var4 = String.valueOf(this.tableModel.getValueAt(var2, 1));
+         String var5 = String.valueOf(this.tableModel.getValueAt(var2, 2));
+         String var6 = String.valueOf(this.tableModel.getValueAt(var2, 3));
+         String var7 = String.valueOf(this.tableModel.getValueAt(var2, 4));
+         String var8 = String.valueOf(this.tableModel.getValueAt(var2, 5));
+         JDialog var9 = new JDialog(this, "Job Details", true);
+         var9.setSize(500, 450);
+         var9.setLocationRelativeTo(this);
+         var9.getContentPane().setBackground(AppTheme.BG_COLOR);
+         var9.setLayout(new BorderLayout(10, 10));
+         JPanel var10 = new JPanel(new BorderLayout());
+         var10.setBackground(AppTheme.PRIMARY_COLOR);
+         var10.setBorder(new EmptyBorder(15, 20, 15, 20));
+         JLabel var11 = new JLabel("\ud83d\udccb Job Details");
+         var11.setFont(AppTheme.FONT_HEADER);
+         var11.setForeground(Color.WHITE);
+         var10.add(var11, "West");
+         var9.add(var10, "North");
+         JPanel var12 = UIHelper.createCardPanel(25);
+         var12.setBorder(new EmptyBorder(20, 30, 20, 30));
+         this.addDetailRow(var12, "ID:", var3);
+         this.addDetailRow(var12, "Title:", var4);
+         this.addDetailRow(var12, "Company:", var5);
+         this.addDetailRow(var12, "Location:", var6);
+         this.addDetailRow(var12, "Salary:", var7);
+         var12.add(Box.createVerticalStrut(10));
+         JLabel var13 = new JLabel("Description:");
+         var13.setFont(AppTheme.FONT_LABEL);
+         var13.setForeground(AppTheme.TEXT_PRIMARY);
+         var12.add(var13);
+         var12.add(Box.createVerticalStrut(5));
+         JTextArea var14 = new JTextArea(var8);
+         var14.setFont(AppTheme.FONT_SUBTITLE);
+         var14.setEditable(false);
+         var14.setOpaque(false);
+         var14.setLineWrap(true);
+         var14.setWrapStyleWord(true);
+         JScrollPane var15 = new JScrollPane(var14);
+         var15.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1));
+         var15.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+         var12.add(var15);
+         var9.add(var12, "Center");
+         JPanel var16 = new JPanel(new FlowLayout(1));
+         var16.setOpaque(false);
+         JButton var17 = UIHelper.createStyledButton("Close", AppTheme.PRIMARY_COLOR);
+         var17.addActionListener((var1x) -> {
+            var9.dispose();
+         });
+         var16.add(var17);
+         var9.add(var16, "South");
+         var9.setVisible(true);
+      }
+   }
+
+   private void addDetailRow(JPanel var1, String var2, String var3) {
+      JPanel var4 = new JPanel(new BorderLayout(10, 5));
+      var4.setOpaque(false);
+      var4.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+      JLabel var5 = new JLabel(var2);
+      var5.setFont(AppTheme.FONT_LABEL);
+      var5.setForeground(AppTheme.TEXT_PRIMARY);
+      var5.setPreferredSize(new Dimension(80, 20));
+      var4.add(var5, "West");
+      JLabel var6 = new JLabel(var3);
+      var6.setFont(AppTheme.FONT_SUBTITLE);
+      var6.setForeground(AppTheme.TEXT_SECONDARY);
+      var4.add(var6, "Center");
+      var1.add(var4);
+      var1.add(Box.createVerticalStrut(8));
+   }
+
+   public JTable getTable() {
+      return this.table;
+   }
+
+   public DefaultTableModel getTableModel() {
+      return this.tableModel;
+   }
+
+   private void applyWithResume() {
+      int var1 = this.table.getSelectedRow();
+      if (var1 == -1) {
+         UIHelper.showWarningDialog(this, "Please select a job first.");
+      } else {
+         int var2 = this.table.convertRowIndexToModel(var1);
+         String var3 = String.valueOf(this.tableModel.getValueAt(var2, 1));
+         String var4 = String.valueOf(this.tableModel.getValueAt(var2, 2));
+
+         try {
+            Object[] var5 = this.dbManager.getResume(this.currentUser);
+            if (var5 != null && var5[0] != null && !String.valueOf(var5[0]).trim().isEmpty() && var5[1] != null && !String.valueOf(var5[1]).trim().isEmpty()) {
+               if (this.dialogManager != null) {
+                  this.dialogManager.showApplyJobDialog(var3, var4);
+               }
+            } else {
+               JOptionPane.showMessageDialog(this, "Please fill up your resume first to apply for jobs.\nOpening Resume dialog...", "Resume Required", 1);
+               if (this.dialogManager != null) {
+                  this.dialogManager.showResumeDialog();
+               }
+            }
+         } catch (SQLException var6) {
+            UIHelper.showErrorDialog(this, "Error checking resume: " + var6.getMessage());
+         }
+
+      }
+   }
+
+   private void showAddJobWindow() {
+      JFrame var1 = new JFrame("➕ Add New Job");
+      var1.setSize(500, 600);
+      var1.setLocationRelativeTo(this);
+      var1.getContentPane().setBackground(AppTheme.BG_COLOR);
+      var1.setLayout(new BorderLayout(10, 10));
+      JPanel var2 = new JPanel(new BorderLayout());
+      var2.setBackground(AppTheme.ACCENT_COLOR);
+      var2.setBorder(new EmptyBorder(15, 20, 15, 20));
+      JLabel var3 = new JLabel("➕ Add New Job");
+      var3.setFont(AppTheme.FONT_HEADER);
+      var3.setForeground(Color.WHITE);
+      var2.add(var3, "West");
+      var1.add(var2, "North");
+      JPanel var4 = UIHelper.createCardPanel(25);
+      var4.setBorder(new EmptyBorder(20, 30, 20, 30));
+      var4.setLayout(new BoxLayout(var4, 1));
+      var4.add(UIHelper.createFormLabel("Job Title *"));
+      JTextField var5 = UIHelper.createStyledTextField(20);
+      var5.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var5.setAlignmentX(0.0F);
+      var4.add(var5);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Company *"));
+      JTextField var6 = UIHelper.createStyledTextField(20);
+      var6.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var6.setAlignmentX(0.0F);
+      var4.add(var6);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Location *"));
+      JTextField var7 = UIHelper.createStyledTextField(20);
+      var7.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var7.setAlignmentX(0.0F);
+      var4.add(var7);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Salary *"));
+      JTextField var8 = UIHelper.createStyledTextField(20);
+      var8.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+      var8.setAlignmentX(0.0F);
+      var4.add(var8);
+      var4.add(Box.createVerticalStrut(12));
+      var4.add(UIHelper.createFormLabel("Description *"));
+      JTextArea var9 = UIHelper.createStyledTextArea(5, 20);
+      JScrollPane var10 = new JScrollPane(var9);
+      var10.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
+      var10.setAlignmentX(0.0F);
+      var4.add(var10);
+      JScrollPane var11 = new JScrollPane(var4);
+      var11.setBorder((Border)null);
+      var11.getVerticalScrollBar().setUnitIncrement(16);
+      var1.add(var11, "Center");
+      JPanel var12 = new JPanel(new FlowLayout(1, 10, 15));
+      var12.setBackground(AppTheme.BG_COLOR);
+      JButton var13 = UIHelper.createStyledButton("➕ Add Job", AppTheme.ACCENT_COLOR);
+      var13.setPreferredSize(new Dimension(150, 40));
+      var13.addActionListener((var7x) -> {
+         String var8x = var5.getText().trim();
+         String var9x = var6.getText().trim();
+         String var10 = var7.getText().trim();
+         String var11 = var8.getText().trim();
+         String var12 = var9.getText().trim();
+         if (!var8x.isEmpty() && !var9x.isEmpty() && !var10.isEmpty() && !var11.isEmpty() && !var12.isEmpty()) {
+            try {
+               int var13 = this.dbManager.addJob(var8x, var9x, var10, var11, var12);
+               if (var13 > 0) {
+                  UIHelper.showSuccessDialog(var1, "Job added successfully!");
+                  var5.setText("");
+                  var6.setText("");
+                  var7.setText("");
+                  var8.setText("");
+                  var9.setText("");
+                  this.loadJobsFromDatabase();
+                  if (this.parentApp != null) {
+                     this.parentApp.refreshJobList();
+                  }
+
+                  var1.dispose();
+               } else {
+                  UIHelper.showErrorDialog(var1, "Failed to add job.");
+               }
+            } catch (SQLException var14) {
+               UIHelper.showErrorDialog(var1, "Error adding job: " + var14.getMessage());
+            }
+
+         } else {
+            UIHelper.showWarningDialog(var1, "Please fill in all required fields.");
+         }
+      });
+      JButton var14 = UIHelper.createStyledButton("Cancel", new Color(149, 165, 166));
+      var14.setPreferredSize(new Dimension(100, 40));
+      var14.addActionListener((var1x) -> {
+         var1.dispose();
+      });
+      var12.add(var13);
+      var12.add(var14);
+      var1.add(var12, "South");
+      var1.setDefaultCloseOperation(2);
+      var1.setVisible(true);
+   }
+}
